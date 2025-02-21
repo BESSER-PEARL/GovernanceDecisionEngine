@@ -1,0 +1,91 @@
+Project:
+    'Project' name=ID '{'
+        'Roles:' roles+=Role[',']
+        'Deadlines:' deadlines*=Deadline[',']
+        'Rules:' rules*=Rule[',']
+    '}'
+;
+
+
+Role:
+    name=ID
+;
+
+
+Deadline:
+    Timer | Condition | WaitForVote
+;
+
+Timer: name=ID ':' timestamp=INT;
+Condition: name=ID ':' expression=STRING;
+WaitForVote: name=ID ':' roles+=[Role][','];
+
+
+Rule:
+    LeaderDriven | Majority | RatioMajority | Phased
+;
+
+LeaderDriven:
+    name=ID ':' 'LeaderDriven' '{'
+        (
+            ('applied to' applied_to=CollabType (query_filter=STRING)?
+                'when' stage=Stage)
+            ('deadline' deadline=[Deadline])
+            ('people' people+=[Role][','])
+            ('default' default=[Rule])
+        )#
+    '}'
+;
+
+Majority:
+    name=ID ':' 'Majority' '{'
+        (
+            ('applied to' applied_to=CollabType (query_filter=STRING)?
+                'when' stage=Stage)
+            ('deadline' deadline=[Deadline])
+            ('people' people+=[Role][','])
+            ('range' range_type=RangeType
+                'min votes' min_vote=INT)
+        )#
+
+    '}'
+;
+
+RatioMajority:
+    name=ID ':' 'Ratio' '{'
+        (
+            ('applied to' applied_to=CollabType (query_filter=STRING)?
+                'when' stage=Stage)
+            ('deadline' deadline=[Deadline])
+            ('people' people+=[Role][','])
+            ('range' range_type=RangeType
+                'min votes' min_vote=INT
+                'ratio' ratio=STRICTFLOAT)
+        )#
+    '}'
+;
+
+Phased:
+    name=ID ':' 'Phased' '{'
+        phases+=[Rule][',']
+    '}'
+
+;
+
+
+
+
+
+
+
+RangeType:
+    'PRESENT' | 'QUALIFIED'
+;
+
+CollabType:
+    'TASK' | 'PATCH' | 'COMMENT' | 'ALL'
+;
+
+Stage:
+    'TASK_REVIEW' | 'PATCH_REVIEW' | 'RELEASE' | 'ALL'
+;

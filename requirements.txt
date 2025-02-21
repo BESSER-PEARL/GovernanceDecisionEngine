@@ -1,0 +1,1 @@
+besser-agentic-framework~=2.0.0
