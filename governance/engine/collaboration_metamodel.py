@@ -46,7 +46,7 @@ class Interaction:
         if isinstance(rule, Majority):
             maj: Majority = rule
             decision = Decision(self, False, time.time(), collab, collab.votes, rule)
-            if maj.min_vote >= len(collab.votes):
+            if maj.min_vote <= len(collab.votes):
                 vote_count: int = 0
                 for vote in collab.votes:
                     vote_count += 1 if vote._agreement else 0
@@ -55,6 +55,7 @@ class Interaction:
                 decision._accepted = 2*vote_count > len(collab.votes)
 
             self._decisions.add(decision)
+            collab._is_decided.add(decision)
             return decision
 
         elif isinstance(rule, RatioMajority):

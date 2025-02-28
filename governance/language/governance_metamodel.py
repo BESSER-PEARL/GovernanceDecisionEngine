@@ -1,6 +1,21 @@
 from enum import Enum, auto
 from typing import Any
 
+class RangeType(Enum):
+    PRESENT = auto()
+    QUALIFIED = auto()
+
+class CollabType(Enum):
+    TASK = auto()
+    PATCH = auto()
+    COMMENT = auto()
+    ALL = auto()
+
+class Stage(Enum):
+    TASK_REVIEW = auto()
+    PATCH_REVIEW = auto()
+    RELEASE = auto()
+    ALL = auto()
 
 class Project:
     def __init__(self, name, roles, deadlines, rules):
@@ -105,23 +120,6 @@ class Phased(Rule):
     def __init__(self, name, applied_to, stage, query_filter, deadline, people, phases, parent = None):
         super().__init__(name, applied_to, stage, query_filter, deadline, people, parent)
         self._phases: list[Rule] = phases
-
-
-class RangeType(Enum):
-    PRESENT = auto()
-    QUALIFIED = auto()
-
-class CollabType(Enum):
-    TASK = auto()
-    PATCH = auto()
-    COMMENT = auto()
-    ALL = auto()
-
-class Stage(Enum):
-    TASK_REVIEW = auto()
-    PATCH_REVIEW = auto()
-    RELEASE = auto()
-    ALL = auto()
 
 
 governance_classes = [Project, Role, Deadline, Timer, Condition, WaitForVote, Rule, LeaderDriven, Majority, RatioMajority, Phased]
