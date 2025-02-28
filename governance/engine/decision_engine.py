@@ -1,18 +1,24 @@
 # You may need to add your working directory to the Python path. To do so, uncomment the following lines of code
 # import sys
 # sys.path.append("/Path/to/directory/agentic-framework") # Replace with your directory path
+from datetime import datetime
+import io
 import json
 import logging
 import time
 
-from textx import metamodel_from_file
+from antlr4 import (
+    InputStream, CommonTokenStream, ParseTreeWalker
+)
 
 from besser.agent.core.agent import Agent
 from besser.agent.core.event import ReceiveMessageEvent, Event
 from besser.agent.core.session import Session
 from besser.agent.exceptions.logger import logger
 from collaboration_metamodel import Interaction, User, TagBased, Collaboration
-from governance.language.governance_metamodel import governance_classes, Role, Project, CollabType, Rule, Timer, Condition, WaitForVote
+from grammar import govdslLexer, govdslParser, PolicyCreationListener
+from grammar.govErrorListener import govErrorListener
+from metamodel import PhasedPolicy, Role, Rule, Deadline
 
 # Configure the logging module (optional)
 logger.setLevel(logging.INFO)
@@ -24,6 +30,45 @@ agent.load_properties('config.ini')
 websocket_platform = agent.use_websocket_platform(use_ui=False)
 
 
+def setup_parser(text):
+    lexer = govdslLexer(InputStream(text))
+    stream = CommonTokenStream(lexer)
+    parser = govdslParser(stream)
+
+    error = io.StringIO()
+
+    parser.removeErrorListeners()
+    error_listener = govErrorListener(error)
+    parser.addErrorListener(error_listener)
+
+    return parser
+
+def parse(path):
+    with open(path, "r") as file:
+        text = file.read()
+
+        # Setup parser and create model
+        parser = setup_parser(text)
+        tree = parser.policy()
+
+        listener = PolicyCreationListener()
+        walker = ParseTreeWalker()
+        walker.walk(listener, tree)
+        return listener.get_policy()
+
+def get_all_roles(policy):
+    roles: dict[str,Role]= dict()
+    if isinstance(policy, PhasedPolicy):
+        for phase in policy.phases:
+            phase_roles = get_all_roles(phase)
+            roles = roles | phase_roles
+    else:
+        for rule in policy.rules:
+            for participant in rule.participants:
+                if isinstance(participant, Role):
+                    roles[participant.name.lower()] = participant
+
+    return roles
 # STATES
 
 init = agent.new_state('init', initial=True)
@@ -36,47 +81,22 @@ decide_state = agent.new_state('decide')
 # GLOBAL VARIABLES
 
 monologue_session = None
-metamodel = metamodel_from_file('governance/language/governance_language.tx', classes=governance_classes)
-gov_rules = metamodel.model_from_file('tests/test.gov')
+policy = parse('tests/majority_policy.txt')
+policy_roles = get_all_roles(policy)
 interactions= Interaction()
 
 # CUSTOM EVENTS AND COND
 
-def deadline_valid(session: 'Session') -> bool:
-    """This condition checks if the deadline event is valid
-
-    Args:
-        session (Session): the current user session
-
-    Returns:
-        bool: True if the deadline is valid
-    """
-    match session.event.type:
-        case "Timer":
-            return time.time() > session.event.timestamp
-        case "Condition":
-            return False # eval session.event._condition
-        case "WaitForVote":
-            for role in session.event.roles:
-                # Filter Users by roles
-                # Depending on the semantics :
-                #   - at least one user of each role voted
-                #   - all users of this role voted
-                return False
-
 class DeadlineEvent(Event):
-    def __init__(self, deadline_type: str, deadline_collab: Collaboration, deadline_rule: Rule,
-                 deadline_timestamp: float = None, deadline_condition: str = None, deadline_roles: set[Role] = None):
+    def __init__(self, deadline_collab: Collaboration = None, deadline_rule: Rule = None,
+                 deadline_timestamp: float = None):
         if deadline_collab is None:
             super().__init__("deadline")
         else:
             super().__init__(deadline_collab._id+"_deadline", monologue_session.id)
-        self._type: str = deadline_type
         self._collab: Collaboration = deadline_collab
         self._rule: Rule = deadline_rule
         self._timestamp: float = deadline_timestamp
-        self._condition: str = deadline_condition
-        self._roles: set[Role] = deadline_roles
 
     def is_matching(self, event: 'Event') -> bool:
         return isinstance(event, DeadlineEvent)
@@ -96,14 +116,6 @@ class DeadlineEvent(Event):
     @property
     def timestamp(self):
         return self._timestamp
-
-    @property
-    def condition(self):
-        return self._condition
-
-    @property
-    def roles(self):
-        return self._roles
 
 
 # STATES BODIES' DEFINITION + TRANSITIONS
@@ -145,24 +157,19 @@ idle.when_event(ReceiveMessageEvent())\
 idle.when_event(ReceiveMessageEvent())\
     .with_condition(cond_req_type('vote'))\
     .go_to(vote_state)
-idle.when_event(DeadlineEvent(None,None,None))\
-    .with_condition(deadline_valid)\
+idle.when_event(DeadlineEvent())\
+    .with_condition(lambda session : time.time() > session.event.timestamp)\
     .go_to(decide_state)
 
 def user_body(session: Session):
     message = json.loads(session.event.message)
     name = message["name"]
     roles = message["roles"]
-
-    # TODO: avoid recomputing
-    role_map = {}
-    for role in gov_rules.roles:
-        role_map[role.name.lower()] = role
         
     effective_roles = set()
     for role in roles:
-        if role_map[role.lower()]:
-            effective_roles.add(role_map[role.lower()])
+        if policy_roles[role.lower()]:
+            effective_roles.add(policy_roles[role.lower()])
     user = User(interactions, name, effective_roles)
     interactions.users.add(user)
     session.set('user', user)
@@ -175,27 +182,20 @@ def collab_body(session: Session):
     message = json.loads(session.event.message)
     name = message["name"]
     rationale = message["rationale"]
+    scope = message["scope"]
     user = session.get('user')
-    collab = interactions.propose(user, name, CollabType.TASK, rationale, TagBased(set('code')))
-    # Find the applying rules
-    applied_rule: Rule = None
-    for rule in gov_rules.rules:
-        same_collab_type = rule._applied_to == collab.type
-        included_in_filter = True  # Parse the filter ?
-        if same_collab_type and included_in_filter:
-            applied_rule = rule
-            break
-    # Create the Deadline event
-    deadline = applied_rule.deadline
-    event = None
-    if isinstance(deadline, Timer):
-        event = DeadlineEvent('Timer', collab, applied_rule, deadline_timestamp=time.time()+deadline.timestamp)
-    elif isinstance(deadline, Condition):
-        event = DeadlineEvent('Condition', collab, applied_rule, deadline_condition=deadline.expression)
-    elif isinstance(deadline, WaitForVote):
-        event = DeadlineEvent('WaitForVote', collab, applied_rule, deadline_roles=deadline.roles)
-    # send the event to the agent
-    agent.receive_event(event)
+    collab = interactions.propose(user, name, scope, rationale, TagBased(set('code')))
+
+    for rule in policy.rules:
+        # Find deadlines and send the associated events
+        deadlines = [d for d in rule.conditions if isinstance(d, Deadline)]
+        for deadline in deadlines:
+            if deadline.date is not None:
+                timestamp = deadline.date.timestamp()
+                agent.receive_event(DeadlineEvent(collab, rule, timestamp))
+            else:
+                timestamp = (datetime.now() + deadline.offset).timestamp()
+                agent.receive_event(DeadlineEvent(collab, rule, timestamp))
 
 collab_state.set_body(collab_body)
 collab_state.go_to(idle)

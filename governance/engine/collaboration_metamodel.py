@@ -11,8 +11,8 @@ Users have Roles
 """
 import time
 
-from governance.language.governance_metamodel import Role, Rule, CollabType, Majority, LeaderDriven, Phased, \
-    RatioMajority
+from metamodel import Role, RatioMajorityRule, LeaderDrivenRule, Rule, MajorityRule
+
 
 class Interaction:
     def __init__(self):
@@ -43,8 +43,8 @@ class Interaction:
         return collab
 
     def make_decision(self, collab: 'Collaboration', rule: Rule) -> 'Decision':
-        if isinstance(rule, Majority):
-            maj: Majority = rule
+        if isinstance(rule, MajorityRule):
+            maj: MajorityRule = rule
             decision = Decision(self, False, time.time(), collab, collab.votes, rule)
             if maj.min_vote <= len(collab.votes):
                 vote_count: int = 0
@@ -58,12 +58,12 @@ class Interaction:
             collab._is_decided.add(decision)
             return decision
 
-        elif isinstance(rule, RatioMajority):
+        elif isinstance(rule, RatioMajorityRule):
             pass
-        elif isinstance(rule, LeaderDriven):
+        elif isinstance(rule, LeaderDrivenRule):
             pass
-        elif isinstance(rule, Phased):
-            pass
+        # elif isinstance(rule, Phased):
+        #     pass
 
 class User:
     def __init__(self, interaction: Interaction, id: str, roles: set[Role]):
