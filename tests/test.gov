@@ -1,25 +1,15 @@
 Project Apache {
     Roles: Developer, Committer, PMCMember, PMCChair
     Deadlines:
-        twoDays : 3600
+        twoDays : 60
     Rules:
-        codeRule : Ratio {
-            applied to TASK "(tag = code)"
-            when TASK_REVIEW
-            people Developer, Committer,
-            PMCMember, PMCChair
-            range PRESENT
-            min votes 3
-            ratio 1.0
-            deadline twoDays
-        },
         noCodeRule : Majority {
             applied to TASK "(tag != code)"
             when TASK_REVIEW
             people Developer, Committer,
             PMCMember, PMCChair
             range PRESENT
-            min votes 3
+            min votes 2
             deadline twoDays
         }
 }
