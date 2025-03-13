@@ -41,10 +41,7 @@ extensions = [
 ]
 
 intersphinx_mapping = {
-    "langchain": ("https://api.python.langchain.com/en/latest", None),
     "python": ("https://docs.python.org/3", None),
-    "pandas": ("https://pandas.pydata.org/docs", None),
-    "python-telegram-bot": ("https://docs.python-telegram-bot.org/en/v20.5", None),
 }
 
 autosummary_generate = True
@@ -55,10 +52,10 @@ exclude_patterns = []
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
-html_title = f"Governance Engine {release}"
+html_title = f"BESSER Governance Engine {release}"
 html_favicon = './img/favicon.png'
 
-# html_logo = "img/besser_logo_light.svg"
+# TODO : create a logo
 html_theme_options = {
     "light_logo": "baf_logo_light.svg",
     "dark_logo": "baf_logo_dark.svg"
@@ -81,23 +78,8 @@ paramlinks_hyperlink_param = "name"
 def generate_api_rst_files(preffix, dir, output_dir):
     api_excluded_files_toctree = [
         # Files that for which we won't automatically generate .rst files and WILL NOT appear in the toctree
-        'db/db_connection.py',
-        'db/flow_graph.py',
-        'db/home.py',
-        'db/intent_details.py',
-        'db/monitoring_ui.py',
-        'db/sidebar.py',
-        'db/table_overview.py',
-        'db/utils.py',
-        'platforms/chat.py',
-        'platforms/initialization.py',
-        'platforms/message_input.py',
-        'platforms/session_management.py',
-        'platforms/sidebar.py',
-        'platforms/streamlit_ui.py',
-        'platforms/vars.py',
-        'platforms/websocket_callbacks.py',
-
+        'language/governance_metamodel.py',
+        'engine/decision_engine.py',
     ]
     api_excluded_files = [
         # Files that for which we won't automatically generate .rst files and WILL appear in the toctree
@@ -144,7 +126,7 @@ f"""{module_name}
         file.write(package_rst)
 
 
-generate_api_rst_files('../../', 'governance/language', './api/language')
+# generate_api_rst_files('../../', 'governance/language', './api/language')
 generate_api_rst_files('../../', 'governance/engine', './api/engine')
 
 
@@ -173,4 +155,4 @@ def linkcode_resolve(domain, info):
         return None
     start, end = lines[1], lines[1] + len(lines[0]) - 1
     filename = info['module'].replace('.', '/')
-    return f"https://github.com/BESSER-PEARL/BESSER-Agentic-Framework/blob/v{release}/{filename}.py#L{start}-L{end}"
+    return f"https://github.com/BESSER-PEARL/BESSER-Governance-Engine/blob/v{release}/{filename}.py#L{start}-L{end}"

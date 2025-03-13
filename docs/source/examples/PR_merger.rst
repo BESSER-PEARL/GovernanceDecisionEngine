@@ -1,6 +1,6 @@
-Greetings agent
+Pull Request Merger
 ===============
 
-.. literalinclude:: ../../../besser/agent/test/examples/greetings_agent.py
+.. literalinclude:: ../../../governance/tests/examples/greetings_agent.py
    :language: python
    :linenos:

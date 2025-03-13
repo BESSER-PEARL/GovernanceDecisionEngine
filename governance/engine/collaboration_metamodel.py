@@ -11,18 +11,18 @@ Users have Roles
 """
 import time
 
-from metamodel import Role, RatioMajorityRule, LeaderDrivenRule, Rule, MajorityRule
+from metamodel import Role, LeaderDrivenRule, Rule, MajorityRule, Scope, Individual
 
 
 class Interaction:
     def __init__(self):
-        self._users: set[User] = set()
+        self._individuals: set[Individual] = set()
         self._collaborations: dict[str,Collaboration] = dict()
         self._decisions: set[Decision] = set()
 
     @property
-    def users(self):
-        return self._users
+    def individuals(self):
+        return self._individuals
 
     @property
     def collaborations(self):
@@ -32,17 +32,19 @@ class Interaction:
     def decisions(self):
         return self._decisions
 
-    def new_user(self, id: str, roles: set[Role]) -> 'User':
-        u = User(self, id, roles)
-        self._users.add(u)
+    def new_individual(self, id: str, roles: set[Role]) -> 'Individual':
+        #TODO : update
+        u = Individual(self, id, roles)
+        self._individuals.add(u)
         return u
 
-    def propose(self, user: 'User', id: str, collab_type: CollabType, rationale: str, metadata: 'Metadata')-> 'Collaboration':
-        collab = Collaboration(self, id, collab_type, rationale, user, metadata)
+    def propose(self, individual: 'Individual', id: str, scope: Scope, rationale: str, metadata: 'Metadata')-> 'Collaboration':
+        collab = Collaboration(self, id, scope, rationale, individual, metadata)
         self._collaborations[id.lower()] = collab
         return collab
 
     def make_decision(self, collab: 'Collaboration', rule: Rule) -> 'Decision':
+        # TODO : Update with new conditions
         if isinstance(rule, MajorityRule):
             maj: MajorityRule = rule
             decision = Decision(self, False, time.time(), collab, collab.votes, rule)
@@ -58,67 +60,57 @@ class Interaction:
             collab._is_decided.add(decision)
             return decision
 
-        elif isinstance(rule, RatioMajorityRule):
-            pass
         elif isinstance(rule, LeaderDrivenRule):
             pass
-        # elif isinstance(rule, Phased):
-        #     pass
 
-class User:
-    def __init__(self, interaction: Interaction, id: str, roles: set[Role]):
-        self._interaction: Interaction = interaction
-        self._id: str = id
-        self._roles: set[Role] = roles
-        self._proposes: set[Collaboration] = set()
-        self._leads: set[Collaboration] = set()
-        self._votes: set[Vote] = set()
 
-    @property
-    def votes(self):
-        return self._votes
-
-    @property
-    def proposes(self):
-        return self._proposes
-
-    @property
-    def leads(self):
-        return self._leads
-
+# Modification for the Individual class
+Individual._interaction: Interaction = None
+Individual._proposes: set['Collaboration'] = set()
+Individual._leads: set['Collaboration'] = set()
+Individual._votes: set['Vote'] = set()
+def votes(self):
+    return self._votes
+def proposes(self):
+    return self._proposes
+def leads(self):
+    return self._leads
+Individual.proposes = proposes
+Individual.leads = leads
+Individual.votes = votes
 
 class Collaboration:
-    def __init__(self, interaction: Interaction, id: str, collab_type: CollabType, rationale: str, creator: User, metadata: 'Metadata'):
+    def __init__(self, interaction: Interaction, id: str, scope: Scope, rationale: str, creator: Individual, metadata: 'Metadata'):
         self._interaction: Interaction = interaction
         self._id: str = id
-        self._type: CollabType = collab_type
+        self._scope: Scope = scope
         self._rationale: str = rationale
-        self._proposed_by: User = creator
-        self._leader: User = creator
+        self._proposed_by: Individual = creator
+        self._leader: Individual = creator
         self._votes: set[Vote] = set()
         self._metadata: Metadata = metadata
         self._is_decided: set[Decision] = set()
         creator.proposes.add(self)
         creator.leads.add(self)
 
-    def vote(self, user: User, agreement: bool, rationale: str):
-        vote = Vote(agreement, time.time(), rationale, user)
+    def vote(self, individual: Individual, agreement: bool, rationale: str):
+        vote = Vote(agreement, time.time(), rationale, individual)
         self._votes.add(vote)
-        user.votes.add(vote)
+        individual.votes.add(vote)
 
     @property
     def leader(self):
         return self._leader
 
     @leader.setter
-    def leader(self, user: User):
+    def leader(self, individual: Individual):
         self._leader.leads.remove(self)
-        self._leader = user
-        user.leads.add(self)
+        self._leader = individual
+        individual.leads.add(self)
 
     @property
-    def type(self):
-        return self._type
+    def scope(self):
+        return self._scope
 
     @property
     def votes(self):
@@ -143,11 +135,11 @@ class Tag:
         self._value: str = value
 
 class Vote:
-    def __init__(self, agreement: bool, timestamp: float, rationale: str, voted_by: User):
+    def __init__(self, agreement: bool, timestamp: float, rationale: str, voted_by: Individual):
         self._agreement: bool = agreement
         self._timestamp: float = timestamp
         self._rationale: str = rationale
-        self._voted_by: User = voted_by
+        self._voted_by: Individual = voted_by
         self._part_of: Decision = None
 
 class Decision:

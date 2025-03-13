@@ -4,9 +4,9 @@
 import logging
 
 from besser.agent.core.agent import Agent
-from besser.agent.core.event import ReceiveMessageEvent
 from besser.agent.core.session import Session
 from besser.agent.exceptions.logger import logger
+from besser.agent.library.transition.event import ReceiveJSONEvent
 from besser.agent.platforms.websocket import WEBSOCKET_PORT, STREAMLIT_PORT
 
 # Configure the logging module (optional)
@@ -32,13 +32,13 @@ def idle_body(session: Session):
     session.reply("I'ready to take your input")
 
 idle_state.set_body(idle_body)
-idle_state.when_event(ReceiveMessageEvent()) \
+idle_state.when_event(ReceiveJSONEvent()) \
           .with_condition(lambda session: session.event.human) \
           .go_to(send_state)
 
 
 def send_body(session: Session):
-    message = session.event.message
+    message = session.event.payload
     session.send_message_to_websocket(
         url='ws://localhost:8765',
         message=message

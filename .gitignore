@@ -2,4 +2,4 @@
 .idea/*
 
 config.ini
-tests/multiagent/config.ini
+governance/tests/multiagent/config.ini

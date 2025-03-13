@@ -12,13 +12,13 @@ from antlr4 import (
 )
 
 from besser.agent.core.agent import Agent
-from besser.agent.core.event import ReceiveMessageEvent, Event
 from besser.agent.core.session import Session
 from besser.agent.exceptions.logger import logger
-from collaboration_metamodel import Interaction, User, TagBased, Collaboration
+from collaboration_metamodel import Interaction, TagBased, Collaboration
+from governance.engine.events import DeadlineEvent, VoteEvent, CollaborationProposalEvent, UserRegistrationEvent
 from grammar import govdslLexer, govdslParser, PolicyCreationListener
 from grammar.govErrorListener import govErrorListener
-from metamodel import PhasedPolicy, Role, Rule, Deadline
+from metamodel import PhasedPolicy, Role, Deadline, Scope, Policy, Individual
 
 # Configure the logging module (optional)
 logger.setLevel(logging.INFO)
@@ -69,11 +69,53 @@ def get_all_roles(policy):
                     roles[participant.name.lower()] = participant
 
     return roles
+
+def find_rule_for(collab: Collaboration):
+    pass
+    # # Pseudo-code for the function
+    # # create scope/policy mapping
+    # # this require scopes to be hashable (see https://docs.python.org/3/glossary.html#term-hashable)
+    # # This should work as scopes can be associated to only one policy
+    # # WARNING : Verify that you can not create two Scope object representing the same scope (hence having the same hash)
+    # mapping = dict()
+    # for policy in policies:
+    #     mapping[policy.scope] = policy
+    #
+    #     # Recursive function to search the scope tree
+    #     def find_scoped_rule_for(collab: Collaboration, scope: Scope):
+    #         pass
+    #         # Pseudo-code for the function
+    #         policy = mapping[scope]
+    #         if policy:
+    #             rule = find_rule_in(policy, collab)
+    #             if rule:
+    #                 return rule
+    #         return find_scoped_rule_for(collab, scope.parent)
+    #
+    # return find_scoped_rule_for(collab, collab.scope)
+
+def find_rule_in(policy: Policy, collab: Collaboration):
+    pass
+#     if isinstance(policy, PhasedPolicy):
+#         for phase in policy.phases:
+#             find_rule_in(phase, collab)
+#     else: # Then SimplePolicy
+#         for rule in policy.rules:
+#             # In the current state all defined rules apply to the scope
+#             # Two possibilities:
+#             #   1. return the first one
+#             #   2. use all the rules and apply the first to conclude (Deadline met and valid voting conditions)
+#             # TODO : Discuss with Jordi and Adem
+#             # For now the first option is implemented
+#             return rule
+#     return None
+
+
 # STATES
 
 init = agent.new_state('init', initial=True)
 idle = agent.new_state('idle')
-user_state = agent.new_state('user')
+individual_state = agent.new_state('individual')
 collab_state = agent.new_state('collab')
 vote_state = agent.new_state('vote')
 decide_state = agent.new_state('decide')
@@ -85,47 +127,7 @@ policy = parse('tests/majority_policy.txt')
 policy_roles = get_all_roles(policy)
 interactions= Interaction()
 
-# CUSTOM EVENTS AND COND
-
-class DeadlineEvent(Event):
-    def __init__(self, deadline_collab: Collaboration = None, deadline_rule: Rule = None,
-                 deadline_timestamp: float = None):
-        if deadline_collab is None:
-            super().__init__("deadline")
-        else:
-            super().__init__(deadline_collab._id+"_deadline", monologue_session.id)
-        self._collab: Collaboration = deadline_collab
-        self._rule: Rule = deadline_rule
-        self._timestamp: float = deadline_timestamp
-
-    def is_matching(self, event: 'Event') -> bool:
-        return isinstance(event, DeadlineEvent)
-
-    @property
-    def type(self):
-        return self._type
-
-    @property
-    def collab(self):
-        return self._collab
-
-    @property
-    def rule(self):
-        return self._rule
-
-    @property
-    def timestamp(self):
-        return self._timestamp
-
-
 # STATES BODIES' DEFINITION + TRANSITIONS
-
-def cond_req_type(req_type: str):
-    def cond(session):
-        struct = json.loads(session.event.message)
-        return struct["req_type"] == req_type
-    return cond
-
 
 def global_fallback_body(session: Session):
     print('Greetings from global fallback')
@@ -148,72 +150,66 @@ def idle_body(session: Session):
     pass
 
 idle.set_body(idle_body)
-idle.when_event(ReceiveMessageEvent())\
-    .with_condition(cond_req_type('user'))\
-    .go_to(user_state)
-idle.when_event(ReceiveMessageEvent())\
-    .with_condition(cond_req_type('collab'))\
-    .go_to(collab_state)
-idle.when_event(ReceiveMessageEvent())\
-    .with_condition(cond_req_type('vote'))\
-    .go_to(vote_state)
+idle.when_event(UserRegistrationEvent()).go_to(individual_state)
+idle.when_event(CollaborationProposalEvent()).go_to(collab_state)
+idle.when_event(VoteEvent()).go_to(vote_state)
 idle.when_event(DeadlineEvent())\
     .with_condition(lambda session : time.time() > session.event.timestamp)\
     .go_to(decide_state)
 
-def user_body(session: Session):
-    message = json.loads(session.event.message)
-    name = message["name"]
-    roles = message["roles"]
+def individual_body(session: Session):
+    individual_event: UserRegistrationEvent = session.event
         
     effective_roles = set()
-    for role in roles:
+    for role in individual_event.roles:
         if policy_roles[role.lower()]:
             effective_roles.add(policy_roles[role.lower()])
-    user = User(interactions, name, effective_roles)
-    interactions.users.add(user)
-    session.set('user', user)
+    individual = interactions.new_individual(individual_event.name, effective_roles)
+    session.set('individual', individual)
 
 
-user_state.set_body(user_body)
-user_state.go_to(idle)
+individual_state.set_body(individual_body)
+individual_state.go_to(idle)
+
 
 def collab_body(session: Session):
-    message = json.loads(session.event.message)
-    name = message["name"]
-    rationale = message["rationale"]
-    scope = message["scope"]
-    user = session.get('user')
-    collab = interactions.propose(user, name, scope, rationale, TagBased(set('code')))
+    collab_event: CollaborationProposalEvent = session.event
+    individual = session.get('individual')
+    collab = interactions.propose(individual,
+                                  collab_event.name,
+                                  collab_event.scope,
+                                  collab_event.rationale,
+                                  TagBased(set('code')))
+    # TODO : add the search for the appropriate policy (when we will have multiple policies)
+    # Since we only have one policy we assume it does match all the scopes
 
+    # Pseudocode for the policy search
     for rule in policy.rules:
         # Find deadlines and send the associated events
         deadlines = [d for d in rule.conditions if isinstance(d, Deadline)]
         for deadline in deadlines:
             if deadline.date is not None:
                 timestamp = deadline.date.timestamp()
-                agent.receive_event(DeadlineEvent(collab, rule, timestamp))
+                agent.receive_event(DeadlineEvent(collab, rule, timestamp, monologue_session.id))
             else:
                 timestamp = (datetime.now() + deadline.offset).timestamp()
-                agent.receive_event(DeadlineEvent(collab, rule, timestamp))
+                agent.receive_event(DeadlineEvent(collab, rule, timestamp, monologue_session.id))
 
 collab_state.set_body(collab_body)
 collab_state.go_to(idle)
 
 def vote_body(session: Session):
-    message = json.loads(session.event.message)
-    name = message["name"]
-    agreement = message["agreement"]
-    rationale = message["rationale"]
-    user = session.get('user')
-    collaboration = interactions.collaborations[name.lower()] or None
-    collaboration.vote(user, agreement, rationale)
+    vote: VoteEvent = session.event
+    individual = session.get('individual')
+    collaboration = interactions.collaborations[vote.name.lower()] or None
+    collaboration.vote(individual, vote.agreement, vote.rationale)
 
 vote_state.set_body(vote_body)
 vote_state.go_to(idle)
 
 def decide_body(session: Session):
     deadline_event: DeadlineEvent = session.event
+    
     interactions.make_decision(deadline_event.collab, deadline_event.rule)
 
 decide_state.set_body(decide_body)
