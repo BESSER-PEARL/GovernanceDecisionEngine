@@ -64,8 +64,24 @@ def visitAbsoluteMajorityPolicy(collab: Collaboration, rule:AbsoluteMajorityPoli
 def visitLeaderDrivenPolicy(collab: Collaboration, rule:LeaderDrivenPolicy) -> bool:
     pass
 
-def visitComposedPolicy(collab: Collaboration, rule:ComposedPolicy) -> bool:
-    pass
+def visitComposedPolicy(collab: Collaboration, rule:ComposedPolicy) -> bool | None:
+    result = rule.require_all
+    finished = True
+    for phase in rule.phases:
+        if phase in collab.ballot_boxes:
+            box = collab.ballot_boxes[phase]
+            vote = box.pop()
+            box.add(vote)
+            if vote._part_of is not None:
+                decision = vote._part_of._accepted
+                if rule.require_all != decision:
+                    return decision
+            else:
+                finished = False
+        else:
+            finished = False
+    return None if not finished else rule.require_all
+
 
 
 
