@@ -15,7 +15,7 @@ def create_individual(interaction, name, roles) -> Individual:
     for role in roles:
         role_obj = Role(role)
         affected_roles.add(role_obj)
-    return interaction.new_individual(name, roles)
+    return interaction.add_individual(name, roles)
 
 def test_majority_rule_accept():
     policy = parse_rules()

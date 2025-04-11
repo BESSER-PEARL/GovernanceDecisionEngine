@@ -9,7 +9,7 @@ def utils_create_dev(interaction) -> Individual:
     roles = set()
     role = Role("Dev")
     roles.add(role)
-    return interaction.new_individual("test", roles)
+    return interaction.add_individual("test", roles)
 
 def utils_create_collab(interaction) -> Collaboration:
     individual = utils_create_dev(interaction)
@@ -20,7 +20,7 @@ def test_individual_creation():
     roles = set()
     role = Role("Dev")
     roles.add(role)
-    individual = interaction.new_individual("test", roles)
+    individual = interaction.add_individual("test", roles)
     assert individual._id == "test"
     assert role in individual._roles
     assert individual in interaction.individuals
@@ -43,7 +43,7 @@ def test_collaboration_creation():
 
 def test_collaboration_leader_change():
     interaction = Interaction()
-    individual = interaction.new_individual('individual2', set())
+    individual = interaction.add_individual('individual2', set())
     collab = utils_create_collab(interaction)
     old_leader = collab.leader
 

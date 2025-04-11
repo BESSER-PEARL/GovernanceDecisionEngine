@@ -6,7 +6,7 @@ import logging
 from besser.agent.core.agent import Agent
 from besser.agent.core.session import Session
 from besser.agent.exceptions.logger import logger
-from besser.agent.library.transition.event import ReceiveJSONEvent
+from besser.agent.library.transition.events.base_events import ReceiveJSONEvent
 from besser.agent.platforms.websocket import WEBSOCKET_PORT, STREAMLIT_PORT
 
 # Configure the logging module (optional)
