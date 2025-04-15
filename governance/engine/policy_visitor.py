@@ -4,6 +4,7 @@ from besser.agent.core.agent import Agent
 
 from governance.engine.events import DeadlineEvent
 from governance.engine.helpers import start_policies
+from utils.gh_extension import PassedTests
 
 if TYPE_CHECKING:
     from governance.engine.collaboration_metamodel import Collaboration
@@ -111,6 +112,8 @@ def visitCondition(collab: 'Collaboration', cond: Condition) -> bool:
         return visitMinimumParticipant(collab, cond)
     if isinstance(cond, VetoRight):
         return visitVetoRight(collab, cond)
+    if isinstance(cond, PassedTests):
+        return visitPassedTests(collab, cond)
     # We do not check deadlines here
     return True
 
@@ -143,4 +146,7 @@ def visitVetoRight(collab: 'Collaboration', cond: VetoRight) -> bool:
             if not vote._agreement:
                 return False
 
+    return True
+
+def visitPassedTests(collab: 'Collaboration', cond: PassedTests) -> bool:
     return True
