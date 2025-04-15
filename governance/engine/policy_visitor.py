@@ -31,7 +31,15 @@ def visitPolicy(collab: 'Collaboration', rule: Policy, agent: Agent) -> bool:
         return visitComposedPolicy(collab, rule)
 
 def visitConsensusPolicy(collab: 'Collaboration', rule:ConsensusPolicy) -> bool:
-    pass
+    for cond in rule.conditions:
+        if not visitCondition(collab, cond):
+            return False
+
+    vote_count: int = 0
+    for vote in collab.ballot_boxes[rule]:
+        vote_count += 1 if vote._agreement else 0
+    # avoid float comparison
+    return vote_count / rule.ratio > len(collab.ballot_boxes[rule])
 
 def visitLazyConsensusPolicy(collab: 'Collaboration', rule:LazyConsensusPolicy) -> bool:
     pass
