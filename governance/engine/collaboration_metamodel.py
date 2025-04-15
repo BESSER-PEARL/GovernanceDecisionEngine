@@ -1,6 +1,8 @@
 import time
 
-from governance.engine.policy_visitor import visitPolicy
+from besser.agent.core.agent import Agent
+
+from governance.engine.policy_visitor import visitPolicy, visitComposedPolicy
 from metamodel import Role, Policy, Scope, Individual, StatusEnum, ComposedPolicy
 
 
@@ -34,27 +36,29 @@ class Interaction:
         self._collaborations[id] = collab
         return collab
 
-    def make_decision(self, collab: 'Collaboration', rule: Policy) -> 'Decision':
-        result = visitPolicy(collab, rule)
+    def make_decision(self, collab: 'Collaboration', rule: Policy, agent: Agent) -> 'Decision':
+        result = visitPolicy(collab, rule, agent)
         decision = Decision(self, result, time.time(), collab, collab.ballot_boxes[rule], rule)
 
-        if result:
-            collab.scope.status = StatusEnum.PARTIAL
+        if result is not None:
+            if collab.scope.status == StatusEnum.ACCEPTED:
+                collab.scope.status = StatusEnum.PARTIAL
 
-        for vote in collab.ballot_boxes[rule]:
-            vote._part_of = decision
-        self._decisions.add(decision)
-        if rule.parent is None:
-            collab._is_decided.add(decision)
-            collab.scope.status = StatusEnum.COMPLETED
-        return decision
+            for vote in collab.ballot_boxes[rule]:
+                vote._part_of = decision
+            self._decisions.add(decision)
+            if rule.parent is None:
+                collab._is_decided = decision
+                collab.scope.status = StatusEnum.COMPLETED
+            return decision
+        return None
 
     def compose_decision(self, collab: 'Collaboration', rule: ComposedPolicy, known_result: bool | None = None) -> 'Decision':
         decision = None
         if known_result is not None:
             decision = Decision(self, known_result, time.time(), collab, collab.ballot_boxes[rule], rule)
         else:
-            result = visitPolicy(collab, rule)
+            result = visitComposedPolicy(collab, rule)
             decision = Decision(self, result, time.time(), collab, collab.ballot_boxes[rule], rule)
 
         if decision._accepted:

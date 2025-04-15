@@ -11,6 +11,7 @@ from governance.engine.events import DeadlineEvent
 from grammar import PolicyCreationListener, govdslParser, govdslLexer
 from grammar.govErrorListener import govErrorListener
 from metamodel import Policy, ComposedPolicy, Role, Deadline
+from utils.gh_extension import Patch
 
 
 def setup_parser(text):
@@ -53,28 +54,25 @@ def get_all_roles(policy):
     return roles
 
 def find_policy_for(policies: set[Policy], collab: Collaboration):
-    pass
-    # # Pseudo-code for the function
-    # # create scope/policy mapping
-    # # this require scopes to be hashable (see https://docs.python.org/3/glossary.html#term-hashable)
-    # # This should work as scopes can be associated to only one policy
-    # # WARNING : Verify that you can not create two Scope object representing the same scope (hence having the same hash)
-    # mapping = dict()
-    # for policy in policies:
-    #     mapping[policy.scope] = policy
-    #
-    #     # Recursive function to search the scope tree
-    #     def find_scoped_rule_for(collab: Collaboration, scope: Scope):
-    #         pass
-    #         # Pseudo-code for the function
-    #         policy = mapping[scope]
-    #         if policy:
-    #             rule = find_rule_in(policy, collab)
-    #             if rule:
-    #                 return rule
-    #         return find_scoped_rule_for(collab, scope.parent)
-    #
-    # return find_scoped_rule_for(collab, collab.scope)
+    for policy in policies:
+        expected_scope = policy.scope
+        received_scope = collab.scope
+        if type(expected_scope) == type(received_scope):
+            if isinstance(expected_scope, Patch):
+                if expected_scope.action is not None and expected_scope.action != received_scope.action:
+                    continue
+                expected_elem = expected_scope.element
+                received_elem = received_scope.element
+                if type(expected_elem) == type(received_elem):
+                    continue
+                for label in expected_elem.labels:
+                    match = True
+                    if label not in received_elem.labels:
+                        match = False
+                        break
+                    if match:
+                        return policy
+    return None
 
 def find_starting_policies_in(policy: Policy) -> list[Policy]:
     out = [policy]

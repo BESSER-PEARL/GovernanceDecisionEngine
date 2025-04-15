@@ -1,14 +1,19 @@
 from typing import TYPE_CHECKING
 
+from besser.agent.core.agent import Agent
+
+from governance.engine.events import DeadlineEvent
+from governance.engine.helpers import start_policies
+
 if TYPE_CHECKING:
     from governance.engine.collaboration_metamodel import Collaboration
 
 from metamodel import Policy, ConsensusPolicy, LazyConsensusPolicy, VotingPolicy, MajorityPolicy, \
     AbsoluteMajorityPolicy, LeaderDrivenPolicy, ComposedPolicy, Condition, ParticipantExclusion, \
-    MinimumParticipant, VetoRight, Role
+    MinimumParticipant, VetoRight, Role, Deadline
 
 
-def visitPolicy(collab: 'Collaboration', rule: Policy) -> bool:
+def visitPolicy(collab: 'Collaboration', rule: Policy, agent: Agent) -> bool:
     if isinstance(rule, ConsensusPolicy):
         return visitConsensusPolicy(collab, rule)
     if isinstance(rule, LazyConsensusPolicy):
@@ -19,7 +24,7 @@ def visitPolicy(collab: 'Collaboration', rule: Policy) -> bool:
         return visitMajorityPolicy(collab, rule)
     if isinstance(rule, AbsoluteMajorityPolicy):
         return visitAbsoluteMajorityPolicy(collab, rule)
-    if isinstance(rule, LeaderDrivenPolicy):
+    if isinstance(rule, LeaderDrivenPolicy, agent):
         return visitLeaderDrivenPolicy(collab, rule)
     if isinstance(rule, ComposedPolicy):
         return visitComposedPolicy(collab, rule)
@@ -36,10 +41,10 @@ def visitVotingPolicy(collab: 'Collaboration', rule:VotingPolicy) -> bool:
             return False
 
     vote_count: int = 0
-    for vote in collab.votes:
+    for vote in collab.ballot_boxes[rule]:
         vote_count += 1 if vote._agreement else 0
     # avoid float comparison
-    return vote_count / rule.ratio > len(collab.votes)
+    return vote_count / rule.ratio > len(collab.ballot_boxes[rule])
 
 def visitMajorityPolicy(collab: 'Collaboration', rule:MajorityPolicy) -> bool:
     for cond in rule.conditions:
@@ -47,10 +52,10 @@ def visitMajorityPolicy(collab: 'Collaboration', rule:MajorityPolicy) -> bool:
              return False
 
     vote_count: int = 0
-    for vote in collab.votes:
+    for vote in collab.ballot_boxes[rule]:
         vote_count += 1 if vote._agreement else 0
     # avoid float comparison
-    return vote_count / rule.ratio > len(collab.votes)
+    return vote_count / rule.ratio > len(collab.ballot_boxes[rule])
 
 def visitAbsoluteMajorityPolicy(collab: 'Collaboration', rule:AbsoluteMajorityPolicy) -> bool:
     for cond in rule.conditions:
@@ -58,13 +63,25 @@ def visitAbsoluteMajorityPolicy(collab: 'Collaboration', rule:AbsoluteMajorityPo
             return False
 
     vote_count: int = 0
-    for vote in collab.votes:
+    for vote in collab.ballot_boxes[rule]:
         vote_count += 1 if vote._agreement else 0
     # avoid float comparison
-    return vote_count / rule.ratio > len(collab.votes)
+    return vote_count / rule.ratio > len(collab.ballot_boxes[rule])
 
-def visitLeaderDrivenPolicy(collab: 'Collaboration', rule:LeaderDrivenPolicy) -> bool:
-    pass
+def visitLeaderDrivenPolicy(collab: 'Collaboration', rule:LeaderDrivenPolicy, agent: Agent) -> bool:
+    for cond in rule.conditions:
+        if not visitCondition(collab, cond):
+            return False
+
+    if rule.default in collab.ballot_boxes:
+        return visitPolicy(collab, rule.default, agent)
+
+    for vote in collab.ballot_boxes[rule]:
+        if vote.voted_by == collab.leader:
+            return vote._agreement
+
+    start_policies(agent, [rule.default], collab)
+    return None
 
 def visitComposedPolicy(collab: 'Collaboration', rule:ComposedPolicy) -> bool | None:
     result = rule.require_all

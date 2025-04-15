@@ -7,7 +7,8 @@ from besser.agent.core.session import Session
 from besser.agent.exceptions.logger import logger
 from collaboration_metamodel import Interaction
 from governance.engine.events import DeadlineEvent, VoteEvent, CollaborationProposalEvent, UserRegistrationEvent
-from governance.engine.helpers import find_policies_in, get_all_roles, parse, find_starting_policies_in, start_policies
+from governance.engine.helpers import find_policies_in, get_all_roles, parse, find_starting_policies_in, start_policies, \
+    find_policy_for
 from metamodel import Deadline, ComposedPolicy
 
 # Configure the logging module (optional)
@@ -73,10 +74,11 @@ def collab_body(session: Session):
 
     # TODO : add the search for the appropriate policy (when we will have multiple policies)
     # Since we only have one policy we assume it does match all the scopes
-    applicable_policy = policy
+    applicable_policy = find_policy_for({policy}, collab)
 
-    starting_policies = find_starting_policies_in(applicable_policy)
-    start_policies(agent, starting_policies, collab)
+    if applicable_policy is not None:
+        starting_policies = find_starting_policies_in(applicable_policy)
+        start_policies(agent, starting_policies, collab)
 
 collab_state.set_body(collab_body)
 collab_state.go_to(idle)
@@ -92,7 +94,7 @@ vote_state.go_to(idle)
 
 def decide_body(session: Session):
     deadline_event: DeadlineEvent = session.event
-    result = interactions.make_decision(deadline_event.collab, deadline_event.policy)
+    result = interactions.make_decision(deadline_event.collab, deadline_event.policy, agent)
 
     parent: ComposedPolicy = deadline_event.policy.parent
     while parent is not None:
