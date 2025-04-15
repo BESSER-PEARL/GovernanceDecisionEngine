@@ -46,10 +46,9 @@ def get_all_roles(policy):
             phase_roles = get_all_roles(phase)
             roles = roles | phase_roles
     else:
-        for rule in policy.rules:
-            for participant in rule.participants:
-                if isinstance(participant, Role):
-                    roles[participant.name.lower()] = participant
+        for participant in policy.participants:
+            if isinstance(participant, Role):
+                roles[participant.name.lower()] = participant
 
     return roles
 
@@ -82,11 +81,8 @@ def find_starting_policies_in(policy: Policy) -> list[Policy]:
     if isinstance(policy, ComposedPolicy):
         if policy.sequential:
             # get the first phase in traverse order (should be a list)
-            the_phase = None
-            for phase in policy.phases:
-                the_phase = phase
-                break
-            out.extend(find_starting_policies_in(the_phase))
+            first_phase = policy.phases[0]
+            out.extend(find_starting_policies_in(first_phase))
         else:
             for phase in policy.phases:
                 out.extend(find_starting_policies_in(phase))
@@ -101,7 +97,7 @@ def find_policies_in(policy: ComposedPolicy, collab: Collaboration) -> list[Poli
     # else:  Parallel does not need anything as all the direct child are already started
     return []
 
-def start_policies(agent: Agent, sessionid: str, policies: list[Policy], collab: Collaboration) -> None:
+def start_policies(agent: Agent, policies: list[Policy], collab: Collaboration) -> None:
     for starting_policy in policies:
         collab.ballot_boxes[starting_policy] = set()
         if isinstance(starting_policy, ComposedPolicy):
@@ -112,7 +108,7 @@ def start_policies(agent: Agent, sessionid: str, policies: list[Policy], collab:
         for deadline in deadlines:
             if deadline.date is not None:
                 timestamp = deadline.date.timestamp()
-                agent.receive_event(DeadlineEvent(collab, starting_policy, timestamp, sessionid))
+                agent.receive_event(DeadlineEvent(collab, starting_policy, timestamp))
             else:
                 timestamp = (datetime.now() + deadline.offset).timestamp()
-                agent.receive_event(DeadlineEvent(collab, starting_policy, timestamp, sessionid))
+                agent.receive_event(DeadlineEvent(collab, starting_policy, timestamp))

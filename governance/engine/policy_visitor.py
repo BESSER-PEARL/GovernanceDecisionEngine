@@ -1,12 +1,14 @@
-import time
+from typing import TYPE_CHECKING
 
-from governance.engine.collaboration_metamodel import Collaboration, Decision
-from metamodel import Policy, SinglePolicy, ConsensusPolicy, LazyConsensusPolicy, VotingPolicy, MajorityPolicy, \
-    AbsoluteMajorityPolicy, LeaderDrivenPolicy, ComposedPolicy, Condition, Deadline, ParticipantExclusion, \
+if TYPE_CHECKING:
+    from governance.engine.collaboration_metamodel import Collaboration
+
+from metamodel import Policy, ConsensusPolicy, LazyConsensusPolicy, VotingPolicy, MajorityPolicy, \
+    AbsoluteMajorityPolicy, LeaderDrivenPolicy, ComposedPolicy, Condition, ParticipantExclusion, \
     MinimumParticipant, VetoRight, Role
 
 
-def visitPolicy(collab: Collaboration, rule: Policy) -> bool:
+def visitPolicy(collab: 'Collaboration', rule: Policy) -> bool:
     if isinstance(rule, ConsensusPolicy):
         return visitConsensusPolicy(collab, rule)
     if isinstance(rule, LazyConsensusPolicy):
@@ -22,13 +24,13 @@ def visitPolicy(collab: Collaboration, rule: Policy) -> bool:
     if isinstance(rule, ComposedPolicy):
         return visitComposedPolicy(collab, rule)
 
-def visitConsensusPolicy(collab: Collaboration, rule:ConsensusPolicy) -> bool:
+def visitConsensusPolicy(collab: 'Collaboration', rule:ConsensusPolicy) -> bool:
     pass
 
-def visitLazyConsensusPolicy(collab: Collaboration, rule:LazyConsensusPolicy) -> bool:
+def visitLazyConsensusPolicy(collab: 'Collaboration', rule:LazyConsensusPolicy) -> bool:
     pass
 
-def visitVotingPolicy(collab: Collaboration, rule:VotingPolicy) -> bool:
+def visitVotingPolicy(collab: 'Collaboration', rule:VotingPolicy) -> bool:
     for cond in rule.conditions:
         if not visitCondition(collab, cond):
             return False
@@ -39,7 +41,7 @@ def visitVotingPolicy(collab: Collaboration, rule:VotingPolicy) -> bool:
     # avoid float comparison
     return vote_count / rule.ratio > len(collab.votes)
 
-def visitMajorityPolicy(collab: Collaboration, rule:MajorityPolicy) -> bool:
+def visitMajorityPolicy(collab: 'Collaboration', rule:MajorityPolicy) -> bool:
     for cond in rule.conditions:
          if not visitCondition(collab, cond):
              return False
@@ -50,7 +52,7 @@ def visitMajorityPolicy(collab: Collaboration, rule:MajorityPolicy) -> bool:
     # avoid float comparison
     return vote_count / rule.ratio > len(collab.votes)
 
-def visitAbsoluteMajorityPolicy(collab: Collaboration, rule:AbsoluteMajorityPolicy) -> bool:
+def visitAbsoluteMajorityPolicy(collab: 'Collaboration', rule:AbsoluteMajorityPolicy) -> bool:
     for cond in rule.conditions:
         if not visitCondition(collab, cond):
             return False
@@ -61,10 +63,10 @@ def visitAbsoluteMajorityPolicy(collab: Collaboration, rule:AbsoluteMajorityPoli
     # avoid float comparison
     return vote_count / rule.ratio > len(collab.votes)
 
-def visitLeaderDrivenPolicy(collab: Collaboration, rule:LeaderDrivenPolicy) -> bool:
+def visitLeaderDrivenPolicy(collab: 'Collaboration', rule:LeaderDrivenPolicy) -> bool:
     pass
 
-def visitComposedPolicy(collab: Collaboration, rule:ComposedPolicy) -> bool | None:
+def visitComposedPolicy(collab: 'Collaboration', rule:ComposedPolicy) -> bool | None:
     result = rule.require_all
     finished = True
     for phase in rule.phases:
@@ -85,7 +87,7 @@ def visitComposedPolicy(collab: Collaboration, rule:ComposedPolicy) -> bool | No
 
 
 
-def visitCondition(collab: Collaboration, cond: Condition) -> bool:
+def visitCondition(collab: 'Collaboration', cond: Condition) -> bool:
     if isinstance(cond, ParticipantExclusion):
         return visitParticipantExclusion(collab, cond)
     if isinstance(cond, MinimumParticipant):
@@ -95,7 +97,7 @@ def visitCondition(collab: Collaboration, cond: Condition) -> bool:
     # We do not check deadlines here
     return True
 
-def visitParticipantExclusion(collab: Collaboration, cond: ParticipantExclusion) -> bool:
+def visitParticipantExclusion(collab: 'Collaboration', cond: ParticipantExclusion) -> bool:
     names = []
     for excl in cond.excluded:
         names.append(excl.name)
@@ -108,10 +110,10 @@ def visitParticipantExclusion(collab: Collaboration, cond: ParticipantExclusion)
     return True
 
 
-def visitMinimumParticipant(collab: Collaboration, cond: MinimumParticipant) -> bool:
+def visitMinimumParticipant(collab: 'Collaboration', cond: MinimumParticipant) -> bool:
     return len(collab.votes) >= cond.min_participants
 
-def visitVetoRight(collab: Collaboration, cond: VetoRight) -> bool:
+def visitVetoRight(collab: 'Collaboration', cond: VetoRight) -> bool:
     veto_roles = []
     veto_names = []
     for vetoer in cond.vetoers:

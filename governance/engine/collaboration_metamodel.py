@@ -1,18 +1,7 @@
-"""
-Dynamic info weaving :
-Decisions have Rules
-Decisions result from Collaborations and are created at the Deadline
-at Collaboration creation, pull applicable rules and launch DeadlineEvents
-Collaborations have one Decision except for Phased
-Collaboration has Metadata
-Collaboration has Votes created by Users
-Users have Roles
-
-"""
 import time
 
 from governance.engine.policy_visitor import visitPolicy
-from metamodel import Role, LeaderDrivenPolicy, Policy, MajorityPolicy, Scope, Individual, StatusEnum, ComposedPolicy
+from metamodel import Role, Policy, Scope, Individual, StatusEnum, ComposedPolicy
 
 
 class Interaction:

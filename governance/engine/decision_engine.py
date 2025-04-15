@@ -31,8 +31,7 @@ decide_state = agent.new_state('decide')
 
 # GLOBAL VARIABLES
 
-monologue_session = None
-policy = parse('tests/majority_policy.txt')
+policy = parse('governance/tests/majority_policy.txt')
 policy_roles = get_all_roles(policy)
 interactions= Interaction()
 
@@ -77,7 +76,7 @@ def collab_body(session: Session):
     applicable_policy = policy
 
     starting_policies = find_starting_policies_in(applicable_policy)
-    start_policies(agent, monologue_session.id, starting_policies, collab)
+    start_policies(agent, starting_policies, collab)
 
 collab_state.set_body(collab_body)
 collab_state.go_to(idle)
@@ -105,7 +104,7 @@ def decide_body(session: Session):
 
     if result is None:
         to_start = find_policies_in(parent, deadline_event.collab)
-        start_policies(agent, monologue_session.id, to_start, deadline_event.collab)
+        start_policies(agent, to_start, deadline_event.collab)
 
 decide_state.set_body(decide_body)
 decide_state.go_to(idle)
@@ -114,5 +113,4 @@ decide_state.go_to(idle)
 # RUN APPLICATION
 
 if __name__ == '__main__':
-    monologue_session = agent.get_or_create_session("Decision Engine Monologue", None)
     agent.run()

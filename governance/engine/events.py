@@ -15,7 +15,7 @@ class DeadlineEvent(Event):
         if deadline_collab is None:
             super().__init__("deadline")
         else:
-            super().__init__(deadline_collab._id+"_deadline", session_id)
+            super().__init__(deadline_collab._id+"_deadline")
         self._collab: Collaboration = deadline_collab
         self._policy: SinglePolicy = deadline_policy
         self._timestamp: float = deadline_timestamp
