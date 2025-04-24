@@ -77,7 +77,9 @@ class CollaborationProposalEvent(PullRequestOpened):
         labels = set()
         for label in labels_payload:
             labels.add(label["name"])
-        return Patch(self.name,StatusEnum.ACCEPTED, ActionEnum.ALL,PullRequest(self.name, labels))
+        pr = PullRequest(self.name, labels)
+        pr.payload = self.payload["pull_request"]
+        return Patch(self.name,StatusEnum.ACCEPTED, ActionEnum.ALL, pr)
 
 class VoteEvent(GitHubEvent):
     def __init__(self, payload=None):

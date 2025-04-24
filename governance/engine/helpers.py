@@ -1,13 +1,15 @@
 import io
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from antlr4.CommonTokenStream import CommonTokenStream
 from antlr4.InputStream import InputStream
 from antlr4.tree.Tree import ParseTreeWalker
 from besser.agent.core.agent import Agent
 
-from governance.engine.collaboration_metamodel import Collaboration
-from governance.engine.events import DeadlineEvent
+if TYPE_CHECKING:
+    from governance.engine.collaboration_metamodel import Collaboration
+    from governance.engine.events import DeadlineEvent
 from grammar import PolicyCreationListener, govdslParser, govdslLexer
 from grammar.govErrorListener import govErrorListener
 from metamodel import Policy, ComposedPolicy, Role, Deadline
@@ -53,7 +55,7 @@ def get_all_roles(policy):
 
     return roles
 
-def find_policy_for(policies: set[Policy], collab: Collaboration):
+def find_policy_for(policies: set[Policy], collab: 'Collaboration'):
     for policy in policies:
         expected_scope = policy.scope
         received_scope = collab.scope
@@ -87,7 +89,7 @@ def find_starting_policies_in(policy: Policy) -> list[Policy]:
     return out
 
 # Called for composed policies from which one phase (direct child) was decided but not the composition
-def find_policies_in(policy: ComposedPolicy, collab: Collaboration) -> list[Policy]:
+def find_policies_in(policy: ComposedPolicy, collab: 'Collaboration') -> list[Policy]:
     if policy.sequential:
         for phase in policy.phases:
             if phase not in collab.ballot_boxes:
@@ -95,7 +97,7 @@ def find_policies_in(policy: ComposedPolicy, collab: Collaboration) -> list[Poli
     # else:  Parallel does not need anything as all the direct child are already started
     return []
 
-def start_policies(agent: Agent, policies: list[Policy], collab: Collaboration) -> None:
+def start_policies(agent: Agent, policies: list[Policy], collab: 'Collaboration') -> None:
     for starting_policy in policies:
         collab.ballot_boxes[starting_policy] = set()
         if isinstance(starting_policy, ComposedPolicy):

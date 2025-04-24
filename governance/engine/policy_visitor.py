@@ -1,8 +1,8 @@
 from typing import TYPE_CHECKING
 
 from besser.agent.core.agent import Agent
+from besser.agent.platforms.github.github_platform import GitHubPlatform
 
-from governance.engine.events import DeadlineEvent
 from governance.engine.helpers import start_policies
 from utils.gh_extension import PassedTests
 
@@ -11,7 +11,7 @@ if TYPE_CHECKING:
 
 from metamodel import Policy, ConsensusPolicy, LazyConsensusPolicy, VotingPolicy, MajorityPolicy, \
     AbsoluteMajorityPolicy, LeaderDrivenPolicy, ComposedPolicy, Condition, ParticipantExclusion, \
-    MinimumParticipant, VetoRight, Role, Deadline
+    MinimumParticipant, VetoRight, Role
 
 
 def visitPolicy(collab: 'Collaboration', rule: Policy, agent: Agent) -> bool:
@@ -157,4 +157,9 @@ def visitVetoRight(collab: 'Collaboration', cond: VetoRight) -> bool:
     return True
 
 def visitPassedTests(collab: 'Collaboration', cond: PassedTests) -> bool:
-    return True
+    gh_platform: GitHubPlatform = collab.scope.platform
+    pr_payload = collab.scope.element.payload
+    commits = gh_platform.getitem(pr_payload["commits_url"].removeprefix('https://api.github.com'))
+    status_url = commits[0]["url"].removeprefix('https://api.github.com') + '/status'
+    status_payload = gh_platform.getitem(status_url)
+    return status_payload["state"] == "success"

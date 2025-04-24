@@ -65,6 +65,7 @@ individual_state.go_to(idle)
 def collab_body(session: Session):
     collab_event: CollaborationProposalEvent = session.event
     creator = interactions.add_individual(collab_event.creator, ["CREATOR"])
+    collab_event.scope.platform = gh_platform
     collab = interactions.propose(creator,
                                   collab_event.id,
                                   collab_event.scope,
