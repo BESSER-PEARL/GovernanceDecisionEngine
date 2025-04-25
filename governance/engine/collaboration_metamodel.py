@@ -5,10 +5,30 @@ from besser.agent.core.agent import Agent
 from governance.engine.policy_visitor import visitPolicy, visitComposedPolicy
 from metamodel import Role, Policy, Scope, Individual, StatusEnum, ComposedPolicy
 
+# Modification for the Individual class
+class DynamicIndividual(Individual):
+    def __init__(self, individual: Individual):
+        super().__init__(individual.name, individual.confidence)
+        self._interaction: Interaction = None
+        self._proposes: set['Collaboration'] = set()
+        self._leads: set['Collaboration'] = set()
+        self._votes: set['Vote'] = set()
+
+    @property
+    def votes(self):
+        return self._votes
+
+    @property
+    def proposes(self):
+        return self._proposes
+
+    @property
+    def leads(self):
+        return self._leads
 
 class Interaction:
     def __init__(self):
-        self._individuals: dict[str, Individual] = dict()
+        self._individuals: dict[str, DynamicIndividual] = dict()
         self._collaborations: dict[int,Collaboration] = dict()
         self._decisions: set[Decision] = set()
 
@@ -24,14 +44,14 @@ class Interaction:
     def decisions(self):
         return self._decisions
 
-    def add_individual(self, id: str, roles: set[Role]) -> 'Individual':
+    def add_individual(self, id: str, roles: set[Role]) -> DynamicIndividual:
         if id not in self._individuals:
             u = Individual(id)
-            self._individuals[id] = u
+            self._individuals[id] = DynamicIndividual(u)
             return u
         return self._individuals[id]
 
-    def propose(self, individual: 'Individual', id: int, scope: Scope, rationale: str)-> 'Collaboration':
+    def propose(self, individual: DynamicIndividual, id: int, scope: Scope, rationale: str)-> 'Collaboration':
         collab = Collaboration(self, id, scope, rationale, individual)
         self._collaborations[id] = collab
         return collab
@@ -73,39 +93,25 @@ class Interaction:
         return decision
 
 
-# Modification for the Individual class
-Individual._interaction: Interaction = None
-Individual._proposes: set['Collaboration'] = set()
-Individual._leads: set['Collaboration'] = set()
-Individual._votes: set['Vote'] = set()
-def votes(self):
-    return self._votes
-def proposes(self):
-    return self._proposes
-def leads(self):
-    return self._leads
-Individual.proposes = proposes
-Individual.leads = leads
-Individual.votes = votes
-
 class Collaboration:
-    def __init__(self, interaction: Interaction, id: int, scope: Scope, rationale: str, creator: Individual):
+    def __init__(self, interaction: Interaction, id: int, scope: Scope, rationale: str, creator: DynamicIndividual):
         self._interaction: Interaction = interaction
         self._id: int = id
         self._scope: Scope = scope
         self._rationale: str = rationale
-        self._proposed_by: Individual = creator
-        self._leader: Individual = creator
+        self._proposed_by: DynamicIndividual = creator
+        self._leader: DynamicIndividual = creator
         # self._votes: set[Vote] = set()
         self._is_decided: Decision = None
         self._ballot_boxes: dict[Policy, set[Vote]] = dict()
         creator.proposes.add(self)
         creator.leads.add(self)
 
-    def vote(self, individual: Individual, agreement: bool, rationale: str):
+    def vote(self, individual: DynamicIndividual, agreement: bool, rationale: str):
         vote = Vote(agreement, time.time(), rationale, individual)
-        box: set[Vote] = self._ballot_boxes[list(self._ballot_boxes)[0]]
-        box.add(vote)
+        for policy in self._ballot_boxes:
+            box: set[Vote] = self._ballot_boxes[policy]
+            box.add(vote)
         individual.votes.add(vote)
 
     @property
@@ -113,7 +119,7 @@ class Collaboration:
         return self._leader
 
     @leader.setter
-    def leader(self, individual: Individual):
+    def leader(self, individual: DynamicIndividual):
         self._leader.leads.remove(self)
         self._leader = individual
         individual.leads.add(self)
@@ -127,11 +133,11 @@ class Collaboration:
         return self._ballot_boxes
 
 class Vote:
-    def __init__(self, agreement: bool, timestamp: float, rationale: str, voted_by: Individual):
+    def __init__(self, agreement: bool, timestamp: float, rationale: str, voted_by: DynamicIndividual):
         self._agreement: bool = agreement
         self._timestamp: float = timestamp
         self._rationale: str = rationale
-        self._voted_by: Individual = voted_by
+        self._voted_by: DynamicIndividual = voted_by
         self._part_of: Decision = None
 
     @property

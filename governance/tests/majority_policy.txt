@@ -1,6 +1,8 @@
 MajorityPolicy TestPolicy {
     Scope:
-        Project TestProjectGH from GitHub : owner/repo
+        Task TestTask : Pull request {
+            Action : merge
+        }
     Participants:
         Roles : Maintainer
         Individuals : Joe as Maintainer with confidence 0.7

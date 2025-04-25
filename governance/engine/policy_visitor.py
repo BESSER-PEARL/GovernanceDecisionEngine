@@ -19,12 +19,12 @@ def visitPolicy(collab: 'Collaboration', rule: Policy, agent: Agent) -> bool:
         return visitConsensusPolicy(collab, rule)
     if isinstance(rule, LazyConsensusPolicy):
         return visitLazyConsensusPolicy(collab, rule)
-    if isinstance(rule, VotingPolicy):
-        return visitVotingPolicy(collab, rule)
     if isinstance(rule, MajorityPolicy):
         return visitMajorityPolicy(collab, rule)
     if isinstance(rule, AbsoluteMajorityPolicy):
         return visitAbsoluteMajorityPolicy(collab, rule)
+    if isinstance(rule, VotingPolicy):
+        return visitVotingPolicy(collab, rule)
     if isinstance(rule, LeaderDrivenPolicy, agent):
         return visitLeaderDrivenPolicy(collab, rule)
     if isinstance(rule, ComposedPolicy):
@@ -32,7 +32,7 @@ def visitPolicy(collab: 'Collaboration', rule: Policy, agent: Agent) -> bool:
 
 def visitConsensusPolicy(collab: 'Collaboration', rule:ConsensusPolicy) -> bool:
     for cond in rule.conditions:
-        if not visitCondition(collab, cond):
+        if not visitCondition(collab, rule, cond):
             return False
 
     vote_count: int = 0
@@ -46,7 +46,7 @@ def visitLazyConsensusPolicy(collab: 'Collaboration', rule:LazyConsensusPolicy) 
 
 def visitVotingPolicy(collab: 'Collaboration', rule:VotingPolicy) -> bool:
     for cond in rule.conditions:
-        if not visitCondition(collab, cond):
+        if not visitCondition(collab, rule, cond):
             return False
 
     vote_count: int = 0
@@ -57,7 +57,7 @@ def visitVotingPolicy(collab: 'Collaboration', rule:VotingPolicy) -> bool:
 
 def visitMajorityPolicy(collab: 'Collaboration', rule:MajorityPolicy) -> bool:
     for cond in rule.conditions:
-         if not visitCondition(collab, cond):
+         if not visitCondition(collab, rule, cond):
              return False
 
     vote_count: int = 0
@@ -68,7 +68,7 @@ def visitMajorityPolicy(collab: 'Collaboration', rule:MajorityPolicy) -> bool:
 
 def visitAbsoluteMajorityPolicy(collab: 'Collaboration', rule:AbsoluteMajorityPolicy) -> bool:
     for cond in rule.conditions:
-        if not visitCondition(collab, cond):
+        if not visitCondition(collab, rule, cond):
             return False
 
     vote_count: int = 0
@@ -79,7 +79,7 @@ def visitAbsoluteMajorityPolicy(collab: 'Collaboration', rule:AbsoluteMajorityPo
 
 def visitLeaderDrivenPolicy(collab: 'Collaboration', rule:LeaderDrivenPolicy, agent: Agent) -> bool:
     for cond in rule.conditions:
-        if not visitCondition(collab, cond):
+        if not visitCondition(collab, rule, cond):
             return False
 
     if rule.default in collab.ballot_boxes:
@@ -113,35 +113,35 @@ def visitComposedPolicy(collab: 'Collaboration', rule:ComposedPolicy) -> bool | 
 
 
 
-def visitCondition(collab: 'Collaboration', cond: Condition) -> bool:
+def visitCondition(collab: 'Collaboration', rule: Policy, cond: Condition) -> bool:
     if isinstance(cond, ParticipantExclusion):
-        return visitParticipantExclusion(collab, cond)
+        return visitParticipantExclusion(collab, rule, cond)
     if isinstance(cond, MinimumParticipant):
-        return visitMinimumParticipant(collab, cond)
+        return visitMinimumParticipant(collab, rule, cond)
     if isinstance(cond, VetoRight):
-        return visitVetoRight(collab, cond)
+        return visitVetoRight(collab, rule, cond)
     if isinstance(cond, PassedTests):
-        return visitPassedTests(collab, cond)
+        return visitPassedTests(collab, rule, cond)
     # We do not check deadlines here
     return True
 
-def visitParticipantExclusion(collab: 'Collaboration', cond: ParticipantExclusion) -> bool:
+def visitParticipantExclusion(collab: 'Collaboration', rule: Policy, cond: ParticipantExclusion) -> bool:
     names = []
     for excl in cond.excluded:
         names.append(excl.name)
     to_remove = set()
-    for vote in collab.votes:
+    for vote in collab.ballot_boxes[rule]:
         if vote.voted_by.name in names:
             vote.voted_by.votes.remove(vote)
             to_remove.add(vote)
-    collab.votes = collab.votes - to_remove
+    collab.ballot_boxes[rule] = collab.ballot_boxes[rule] - to_remove
     return True
 
 
-def visitMinimumParticipant(collab: 'Collaboration', cond: MinimumParticipant) -> bool:
-    return len(collab.votes) >= cond.min_participants
+def visitMinimumParticipant(collab: 'Collaboration', rule: Policy, cond: MinimumParticipant) -> bool:
+    return len(collab.ballot_boxes[rule]) >= cond.min_participants
 
-def visitVetoRight(collab: 'Collaboration', cond: VetoRight) -> bool:
+def visitVetoRight(collab: 'Collaboration', rule: Policy, cond: VetoRight) -> bool:
     veto_roles = []
     veto_names = []
     for vetoer in cond.vetoers:
@@ -149,14 +149,14 @@ def visitVetoRight(collab: 'Collaboration', cond: VetoRight) -> bool:
             veto_roles.append(vetoer.name)
         else:
             veto_names.append(vetoer.name)
-    for vote in collab.votes:
+    for vote in collab.ballot_boxes[rule]:
         if vote.voted_by.name in veto_names or  vote.voted_by.role in veto_roles:
             if not vote._agreement:
                 return False
 
     return True
 
-def visitPassedTests(collab: 'Collaboration', cond: PassedTests) -> bool:
+def visitPassedTests(collab: 'Collaboration', rule: Policy, cond: PassedTests) -> bool:
     gh_platform: GitHubPlatform = collab.scope.platform
     pr_payload = collab.scope.element.payload
     commits = gh_platform.getitem(pr_payload["commits_url"].removeprefix('https://api.github.com'))

@@ -1,6 +1,7 @@
 .venv/*
 .idea/*
-*/__pycache__/*
+**/__pycache__/**
+application.log
 
 config.ini
 governance/tests/multiagent/config.ini
