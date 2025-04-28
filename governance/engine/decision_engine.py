@@ -49,13 +49,13 @@ idle.when_event(DeadlineEvent()).go_to(decide_state)
 
 
 def individual_body(session: Session):
-    individual_event: UserRegistrationEvent = session.event
+    individual_event: UserRegistrationEvent = UserRegistrationEvent.from_github_event(session.event)
 
     effective_roles = set()
     # for role in individual_event.roles:
     #     if policy_roles[role.lower()]:
     #         effective_roles.add(policy_roles[role.lower()])
-    interactions.add_individual(individual_event.name, effective_roles)
+    interactions.add_individual(individual_event.login, effective_roles)
 
 
 individual_state.set_body(individual_body)
@@ -63,13 +63,13 @@ individual_state.go_to(idle)
 
 
 def collab_body(session: Session):
-    collab_event: CollaborationProposalEvent = session.event
+    collab_event: CollaborationProposalEvent = CollaborationProposalEvent.from_github_event(session.event)
     creator = interactions.add_individual(collab_event.creator, ["CREATOR"])
     collab_event.scope.platform = gh_platform
     collab = interactions.propose(creator,
                                   collab_event.id,
                                   collab_event.scope,
-                                  collab_event.name + "\n\nComment:\n" + collab_event.rationale)
+                                  collab_event.title + "\n\nComment:\n" + collab_event.rationale)
     for reviewer in collab_event.reviewers:
         interactions.add_individual(reviewer, ["REVIEWER"])
 
@@ -85,7 +85,7 @@ collab_state.set_body(collab_body)
 collab_state.go_to(idle)
 
 def vote_body(session: Session):
-    vote: VoteEvent = session.event
+    vote: VoteEvent = VoteEvent.from_github_event(session.event)
     individual = interactions.add_individual(vote.user_login, set())
     collaboration = interactions.collaborations[vote.pull_request_id] or None
     collaboration.vote(individual, vote.agreement, vote.rationale)

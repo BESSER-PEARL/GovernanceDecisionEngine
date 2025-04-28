@@ -9,7 +9,7 @@ from besser.agent.core.agent import Agent
 
 if TYPE_CHECKING:
     from governance.engine.collaboration_metamodel import Collaboration
-    from governance.engine.events import DeadlineEvent
+from governance.engine.events import DeadlineEvent
 from grammar import PolicyCreationListener, govdslParser, govdslLexer
 from grammar.govErrorListener import govErrorListener
 from metamodel import Policy, ComposedPolicy, Role, Deadline
@@ -65,15 +65,17 @@ def find_policy_for(policies: set[Policy], collab: 'Collaboration'):
                     continue
                 expected_elem = expected_scope.element
                 received_elem = received_scope.element
-                if type(expected_elem) == type(received_elem):
+                if type(expected_elem) != type(received_elem):
                     continue
+                if expected_elem.labels is None:
+                    return policy
+                match = True
                 for label in expected_elem.labels:
-                    match = True
                     if label not in received_elem.labels:
                         match = False
                         break
-                    if match:
-                        return policy
+                if match:
+                    return policy
     return None
 
 def find_starting_policies_in(policy: Policy) -> list[Policy]:
@@ -106,9 +108,12 @@ def start_policies(agent: Agent, policies: list[Policy], collab: 'Collaboration'
         # Find deadlines and send the associated events
         deadlines = [d for d in starting_policy.conditions if isinstance(d, Deadline)]
         for deadline in deadlines:
-            if deadline.date is not None:
-                timestamp = deadline.date.timestamp()
-                agent.receive_event(DeadlineEvent(collab, starting_policy, timestamp))
-            else:
-                timestamp = (datetime.now() + deadline.offset).timestamp()
-                agent.receive_event(DeadlineEvent(collab, starting_policy, timestamp))
+            timestamp = datetime.now().timestamp()
+            timestamp += 10
+            agent.receive_event(DeadlineEvent(collab, starting_policy, timestamp))
+            # if deadline.date is not None:
+            #     timestamp = deadline.date.timestamp()
+            #     agent.receive_event(DeadlineEvent(collab, starting_policy, timestamp))
+            # else:
+            #     timestamp = (datetime.now() + deadline.offset).timestamp()
+            #     agent.receive_event(DeadlineEvent(collab, starting_policy, timestamp))
