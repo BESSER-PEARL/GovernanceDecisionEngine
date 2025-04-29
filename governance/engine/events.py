@@ -34,6 +34,11 @@ class DeadlineEvent(Event):
     def timestamp(self):
         return self._timestamp
 
+class UpdatePolicyEvent(GitHubEvent):
+    def __init__(self, payload=None):
+        super().__init__('policy', 'update', payload)
+
+
 class UserRegistrationEvent(PullRequestAssigned):
 
     @classmethod
