@@ -1,13 +1,24 @@
+import base64
 import json
-import time
 
 import requests
 import hmac
 
+
 class EngineTesting(object):
-    def __init__(self, port, secret):
+    def __init__(self, port, secret, path):
         self._port = port
         self._secret = secret
+
+        with open(path, "r") as file:
+            data = file.read()
+            # base64_data = base64.b64encode(data)
+            # base64_output = base64_data.decode('utf-8')
+            self._send('policy',
+                       'update',
+                       {"file_content":data, "file_type":"txt", "file_name":file.name})
+
+
 
     def _send(self, event, action, data):
         url = 'http://127.0.0.1:{}'.format(self._port)

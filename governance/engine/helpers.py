@@ -29,11 +29,7 @@ def setup_parser(text):
 
     return parser
 
-def parse(path):
-    with open(path, "r") as file:
-        text = file.read()
-
-        # Setup parser and create model
+def parse_text(text):
         parser = setup_parser(text)
         tree = parser.policy()
 
@@ -41,6 +37,10 @@ def parse(path):
         walker = ParseTreeWalker()
         walker.walk(listener, tree)
         return listener.get_policy()
+
+def parse(path):
+    with open(path, "r") as file:
+        return parse_text(file.read())
 
 def get_all_roles(policy):
     roles: dict[str,Role]= dict()

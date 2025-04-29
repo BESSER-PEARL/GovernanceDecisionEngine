@@ -5,10 +5,13 @@ import time
 from besser.agent.core.agent import Agent
 from besser.agent.core.session import Session
 from besser.agent.exceptions.logger import logger
+from besser.agent.library.transition.events.base_events import ReceiveFileEvent
+
 from collaboration_metamodel import Interaction
-from governance.engine.events import DeadlineEvent, VoteEvent, CollaborationProposalEvent, UserRegistrationEvent
+from governance.engine.events import DeadlineEvent, VoteEvent, CollaborationProposalEvent, UserRegistrationEvent, \
+    UpdatePolicyEvent
 from governance.engine.helpers import find_policies_in, get_all_roles, parse, find_starting_policies_in, start_policies, \
-    find_policy_for
+    find_policy_for, parse_text
 from metamodel import Deadline, ComposedPolicy
 
 # Configure the logging module (optional)
@@ -25,6 +28,7 @@ gh_platform = agent.use_github_platform()
 # STATES
 
 idle = agent.new_state('idle', initial=True)
+update_policy = agent.new_state('update')
 individual_state = agent.new_state('individual')
 collab_state = agent.new_state('collab')
 vote_state = agent.new_state('vote')
@@ -32,7 +36,7 @@ decide_state = agent.new_state('decide')
 
 # GLOBAL VARIABLES
 
-policy = parse('governance/tests/majority_policy.txt')
+policy = parse('governance/tests/policies/maj_with_veto_right.txt')
 policy_roles = get_all_roles(policy)
 interactions= Interaction()
 
@@ -40,12 +44,21 @@ interactions= Interaction()
 
 
 # Wait for Collab to be created, Users to vote, or Deadline to finish
+# idle.when_event(ReceiveFileEvent()).go_to(update_policy)
+idle.when_event(UpdatePolicyEvent()).go_to(update_policy)
 idle.when_event(UserRegistrationEvent()).go_to(individual_state)
 idle.when_event(CollaborationProposalEvent()).go_to(collab_state)
 idle.when_event(VoteEvent()).go_to(vote_state)
 idle.when_event(DeadlineEvent()).go_to(decide_state)
 
+def update_body(session: Session):
+    global policy
+    update_event: UpdatePolicyEvent = session.event
+    text = update_event.payload["file_content"]
+    policy = parse_text(text)
 
+update_policy.set_body(update_body)
+update_policy.go_to(idle)
 
 
 def individual_body(session: Session):
