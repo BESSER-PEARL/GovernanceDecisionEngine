@@ -9,12 +9,12 @@ from utils.gh_extension import Patch, PullRequest, ActionEnum
 
 
 class DeadlineEvent(Event):
-    def __init__(self, deadline_collab = None, deadline_policy: SinglePolicy = None,
+    def __init__(self, deadline_collab=None, deadline_policy: SinglePolicy = None,
                  deadline_timestamp: float = None, session_id: str = None):
         if deadline_collab is None:
             super().__init__("deadline")
         else:
-            super().__init__(str(deadline_collab._id)+"_deadline")
+            super().__init__(str(deadline_collab._id) + "_deadline")
         self._collab = deadline_collab
         self._policy: SinglePolicy = deadline_policy
         self._timestamp: float = deadline_timestamp
@@ -34,12 +34,22 @@ class DeadlineEvent(Event):
     def timestamp(self):
         return self._timestamp
 
-class UpdatePolicyEvent(GitHubEvent):
+
+class EngineEvent(Event):
+    def __init__(self, name, payload=None):
+        super().__init__(name)
+        self.payload = payload
+
+
+class UpdatePolicyEvent(EngineEvent):
+    def __init__(self, text=''):
+        super().__init__('UpdatePolicyEvent', text)
+        self.text = text
+
+
+class UserRegistrationEvent(EngineEvent):
     def __init__(self, payload=None):
-        super().__init__('policy', 'update', payload)
-
-
-class UserRegistrationEvent(PullRequestAssigned):
+        super().__init__('UserRegistrationEvent',  payload)
 
     @classmethod
     def from_github_event(cls, event: GitHubEvent):
@@ -53,7 +63,10 @@ class UserRegistrationEvent(PullRequestAssigned):
     def roles(self):
         return ["REVIEWER"]
 
-class CollaborationProposalEvent(PullRequestOpened):
+
+class CollaborationProposalEvent(EngineEvent):
+    def __init__(self, payload=None):
+        super().__init__('CollaborationProposalEvent',  payload)
 
     @classmethod
     def from_github_event(cls, event: GitHubEvent):
@@ -91,11 +104,12 @@ class CollaborationProposalEvent(PullRequestOpened):
             labels.add(label["name"])
         pr = PullRequest(self.title, labels)
         pr.payload = self.payload["pull_request"]
-        return Patch(self.title,StatusEnum.ACCEPTED, ActionEnum.MERGE, pr)
+        return Patch(self.title, StatusEnum.ACCEPTED, ActionEnum.MERGE, pr)
 
-class VoteEvent(GitHubEvent):
+
+class VoteEvent(EngineEvent):
     def __init__(self, payload=None):
-        super().__init__('pull_request_review', 'submitted', payload)
+        super().__init__('VoteEvent',  payload)
 
     @classmethod
     def from_github_event(cls, event: GitHubEvent):

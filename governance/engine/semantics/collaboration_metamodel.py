@@ -2,7 +2,7 @@ import time
 
 from besser.agent.core.agent import Agent
 
-from governance.engine.policy_visitor import visitPolicy, visitComposedPolicy
+from governance.engine.semantics.policy_visitor import visitPolicy, visitComposedPolicy
 from metamodel import Role, Policy, Scope, Individual, StatusEnum, ComposedPolicy
 
 # Modification for the Individual class

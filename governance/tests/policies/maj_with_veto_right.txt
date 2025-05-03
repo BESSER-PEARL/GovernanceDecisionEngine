@@ -1,8 +1,10 @@
 MajorityPolicy TestPolicy {
     Scope:
-        Project TestProjectGH from GitHub : owner/repo
+        Task TestTask : Pull request {
+            Action : merge
+        }
     Participants:
         Roles : Maintainer   
     Conditions:
-        VetoRight : ProjectOwner
+        VetoRight : adem
 }

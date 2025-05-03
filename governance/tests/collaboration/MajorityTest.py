@@ -1,6 +1,6 @@
 from textx import metamodel_from_file
 
-from governance.engine.collaboration_metamodel import Interaction
+from governance.engine.semantics.collaboration_metamodel import Interaction
 from governance.language.governance_metamodel import Role, CollabType, Project, governance_classes
 from metamodel import Individual
 

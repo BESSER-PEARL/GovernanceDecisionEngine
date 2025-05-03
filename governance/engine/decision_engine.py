@@ -1,132 +1,103 @@
-from datetime import datetime
+import argparse
 import logging
-import time
+import os
 
 from besser.agent.core.agent import Agent
-from besser.agent.core.session import Session
 from besser.agent.exceptions.logger import logger
 from besser.agent.library.transition.events.base_events import ReceiveFileEvent
+from besser.agent.library.transition.events.github_webhooks_events import PullRequestAssigned, GitHubEvent, \
+    PullRequestOpened
 
-from collaboration_metamodel import Interaction
 from governance.engine.events import DeadlineEvent, VoteEvent, CollaborationProposalEvent, UserRegistrationEvent, \
     UpdatePolicyEvent
-from governance.engine.helpers import find_policies_in, get_all_roles, parse, find_starting_policies_in, start_policies, \
-    find_policy_for, parse_text
-from metamodel import Deadline, ComposedPolicy
+from governance.engine.state_bodies import individual_body, vote_body, collab_bodybuilder, \
+    decide_bodybuilder, gh_webhooks_bodybuilder, update_policy_body, init_body, read_policy_bodybuilder
+from governance.engine.testing.hooks import add_testing_hooks
+from governance.engine.testing.platform_mock import PlatformMock
 
-# Configure the logging module (optional)
 logger.setLevel(logging.INFO)
 
-agent = Agent('decision_engine')
-# Load agent properties stored in a dedicated file
-agent.load_properties('config.ini')
-# Define the platform your agent will use
-# websocket_platform = agent.use_websocket_platform(use_ui=False)
-gh_platform = agent.use_github_platform()
+def setup(testing: bool) -> Agent:
+    agent = Agent('decision_engine')
+    agent.load_properties('config.ini')
+
+    if not testing:
+        websocket_platform = agent.use_websocket_platform(use_ui=True)
+    gh_platform = agent.use_github_platform()
 
 
-# STATES
-
-idle = agent.new_state('idle', initial=True)
-update_policy = agent.new_state('update')
-individual_state = agent.new_state('individual')
-collab_state = agent.new_state('collab')
-vote_state = agent.new_state('vote')
-decide_state = agent.new_state('decide')
-
-# GLOBAL VARIABLES
-
-policy = parse('governance/tests/policies/maj_with_veto_right.txt')
-policy_roles = get_all_roles(policy)
-interactions= Interaction()
-
-# STATES BODIES' DEFINITION + TRANSITIONS
+    # STATES
+    init = agent.new_state('init', initial=True)
+    idle = agent.new_state('idle')
+    read_policy = agent.new_state('read_policy')
+    gh_webhooks = agent.new_state('gh_webhooks')
+    update_policy = agent.new_state('update')
+    individual_state = agent.new_state('individual')
+    collab_state = agent.new_state('collab')
+    vote_state = agent.new_state('vote')
+    decide_state = agent.new_state('decide')
 
 
-# Wait for Collab to be created, Users to vote, or Deadline to finish
-# idle.when_event(ReceiveFileEvent()).go_to(update_policy)
-idle.when_event(UpdatePolicyEvent()).go_to(update_policy)
-idle.when_event(UserRegistrationEvent()).go_to(individual_state)
-idle.when_event(CollaborationProposalEvent()).go_to(collab_state)
-idle.when_event(VoteEvent()).go_to(vote_state)
-idle.when_event(DeadlineEvent()).go_to(decide_state)
-
-def update_body(session: Session):
-    global policy
-    update_event: UpdatePolicyEvent = session.event
-    text = update_event.payload["file_content"]
-    policy = parse_text(text)
-
-update_policy.set_body(update_body)
-update_policy.go_to(idle)
+    # STATES BODIES' LINKING
+    init.set_body(init_body)
+    read_policy.set_body(read_policy_bodybuilder(agent))
+    gh_webhooks.set_body(gh_webhooks_bodybuilder(agent))
+    update_policy.set_body(update_policy_body)
+    individual_state.set_body(individual_body)
+    platform = PlatformMock(agent) if testing else gh_platform
+    collab_state.set_body(collab_bodybuilder(platform, agent))
+    vote_state.set_body(vote_body)
+    decide_state.set_body(decide_bodybuilder(agent))
 
 
-def individual_body(session: Session):
-    individual_event: UserRegistrationEvent = UserRegistrationEvent.from_github_event(session.event)
+    # TRANSITIONS DEFINITION
 
-    effective_roles = set()
-    # for role in individual_event.roles:
-    #     if policy_roles[role.lower()]:
-    #         effective_roles.add(policy_roles[role.lower()])
-    interactions.add_individual(individual_event.login, effective_roles)
+    if testing:
+        # testing setup
+        init.go_to(idle)
+        idle.when_event(GitHubEvent("policy", "update", None)).go_to(gh_webhooks)
+    else:
+        # production setup
+        init.when_event(ReceiveFileEvent()).go_to(read_policy)
+        idle.when_event(ReceiveFileEvent()).go_to(read_policy)
 
+    # translate platform input to workflow events
+    idle.when_event(PullRequestAssigned()).go_to(gh_webhooks)
+    idle.when_event(PullRequestOpened()).go_to(gh_webhooks)
+    idle.when_event(GitHubEvent("pull_request_review","submitted", None)).go_to(gh_webhooks)
 
-individual_state.set_body(individual_body)
-individual_state.go_to(idle)
+    # map workflow events to dedicated states
+    idle.when_event(UpdatePolicyEvent()).go_to(update_policy)
+    idle.when_event(UserRegistrationEvent()).go_to(individual_state)
+    idle.when_event(CollaborationProposalEvent()).go_to(collab_state)
+    idle.when_event(VoteEvent()).go_to(vote_state)
+    idle.when_event(DeadlineEvent()).go_to(decide_state)
 
+    # when event managed go back to idle
+    read_policy.go_to(idle)
+    gh_webhooks.go_to(idle)
+    update_policy.go_to(idle)
+    individual_state.go_to(idle)
+    collab_state.go_to(idle)
+    vote_state.go_to(idle)
+    decide_state.go_to(idle)
 
-def collab_body(session: Session):
-    collab_event: CollaborationProposalEvent = CollaborationProposalEvent.from_github_event(session.event)
-    creator = interactions.add_individual(collab_event.creator, ["CREATOR"])
-    collab_event.scope.platform = gh_platform
-    collab = interactions.propose(creator,
-                                  collab_event.id,
-                                  collab_event.scope,
-                                  collab_event.title + "\n\nComment:\n" + collab_event.rationale)
-    for reviewer in collab_event.reviewers:
-        interactions.add_individual(reviewer, ["REVIEWER"])
+    # ADDITIONAL HOOKS AND FEATURES FOR TESTING
+    if testing:
+        add_testing_hooks(agent, idle, platform)
 
-    # TODO : add the search for the appropriate policy (when we will have multiple policies)
-    # Since we only have one policy we assume it does match all the scopes
-    applicable_policy = find_policy_for({policy}, collab)
-
-    if applicable_policy is not None:
-        starting_policies = find_starting_policies_in(applicable_policy)
-        start_policies(agent, starting_policies, collab)
-
-collab_state.set_body(collab_body)
-collab_state.go_to(idle)
-
-def vote_body(session: Session):
-    vote: VoteEvent = VoteEvent.from_github_event(session.event)
-    individual = interactions.add_individual(vote.user_login, set())
-    collaboration = interactions.collaborations[vote.pull_request_id] or None
-    collaboration.vote(individual, vote.agreement, vote.rationale)
-
-vote_state.set_body(vote_body)
-vote_state.go_to(idle)
-
-def decide_body(session: Session):
-    deadline_event: DeadlineEvent = session.event
-    result = interactions.make_decision(deadline_event.collab, deadline_event.policy, agent)
-
-    parent: ComposedPolicy = deadline_event.policy.parent
-    while parent is not None:
-        known_result = result._accepted if parent.require_all != result._accepted else None
-        result = interactions.compose_decision(deadline_event.collab, parent, known_result)
-        if result is None:
-            break
-        parent = parent.parent
-
-    if result is None:
-        to_start = find_policies_in(parent, deadline_event.collab)
-        start_policies(agent, to_start, deadline_event.collab)
-
-decide_state.set_body(decide_body)
-decide_state.go_to(idle)
+    return agent
 
 
 # RUN APPLICATION
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser(
+        prog='Governance Decision Engine',
+        description='Agent in charge of enforcing governance policies expressed using the Governance DSL.')
+    parser.add_argument('-t','--test', action='store_true',
+                        help='Start the engine in testing mode (add features and hooks for automatic testing)')
+    args = parser.parse_args()
+    os.environ["ENGINE_TESTING"] = str(args.test)
+    agent = setup(args.test)
     agent.run()

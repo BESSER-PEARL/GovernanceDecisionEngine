@@ -3,11 +3,11 @@ from typing import TYPE_CHECKING
 from besser.agent.core.agent import Agent
 from besser.agent.platforms.github.github_platform import GitHubPlatform
 
-from governance.engine.helpers import start_policies
+from governance.engine.semantics.helpers import start_policies
 from utils.gh_extension import PassedTests
 
 if TYPE_CHECKING:
-    from governance.engine.collaboration_metamodel import Collaboration
+    from governance.engine.semantics.collaboration_metamodel import Collaboration
 
 from metamodel import Policy, ConsensusPolicy, LazyConsensusPolicy, VotingPolicy, MajorityPolicy, \
     AbsoluteMajorityPolicy, LeaderDrivenPolicy, ComposedPolicy, Condition, ParticipantExclusion, \
@@ -39,7 +39,8 @@ def visitConsensusPolicy(collab: 'Collaboration', rule:ConsensusPolicy) -> bool:
     for vote in collab.ballot_boxes[rule]:
         vote_count += 1 if vote._agreement else 0
     # avoid float comparison
-    return vote_count / rule.ratio > len(collab.ballot_boxes[rule])
+    ratio = rule.ratio if rule.ratio is not None else 0.5
+    return vote_count / ratio > len(collab.ballot_boxes[rule])
 
 def visitLazyConsensusPolicy(collab: 'Collaboration', rule:LazyConsensusPolicy) -> bool:
     pass
@@ -53,7 +54,8 @@ def visitVotingPolicy(collab: 'Collaboration', rule:VotingPolicy) -> bool:
     for vote in collab.ballot_boxes[rule]:
         vote_count += 1 if vote._agreement else 0
     # avoid float comparison
-    return vote_count / rule.ratio > len(collab.ballot_boxes[rule])
+    ratio = rule.ratio if rule.ratio is not None else 0.5
+    return vote_count / ratio > len(collab.ballot_boxes[rule])
 
 def visitMajorityPolicy(collab: 'Collaboration', rule:MajorityPolicy) -> bool:
     for cond in rule.conditions:
@@ -64,7 +66,8 @@ def visitMajorityPolicy(collab: 'Collaboration', rule:MajorityPolicy) -> bool:
     for vote in collab.ballot_boxes[rule]:
         vote_count += 1 if vote._agreement else 0
     # avoid float comparison
-    return vote_count / rule.ratio > len(collab.ballot_boxes[rule])
+    ratio = rule.ratio if rule.ratio is not None else 0.5
+    return vote_count / ratio > len(collab.ballot_boxes[rule])
 
 def visitAbsoluteMajorityPolicy(collab: 'Collaboration', rule:AbsoluteMajorityPolicy) -> bool:
     for cond in rule.conditions:
@@ -75,7 +78,8 @@ def visitAbsoluteMajorityPolicy(collab: 'Collaboration', rule:AbsoluteMajorityPo
     for vote in collab.ballot_boxes[rule]:
         vote_count += 1 if vote._agreement else 0
     # avoid float comparison
-    return vote_count / rule.ratio > len(collab.ballot_boxes[rule])
+    ratio = rule.ratio if rule.ratio is not None else 0.5
+    return vote_count / ratio > len(collab.ballot_boxes[rule])
 
 def visitLeaderDrivenPolicy(collab: 'Collaboration', rule:LeaderDrivenPolicy, agent: Agent) -> bool:
     for cond in rule.conditions:

@@ -1,8 +1,12 @@
 import base64
 import json
+import os
+import time
 
 import requests
 import hmac
+
+from governance.tests.framework.assert_builder import AssertType, DecisionAssertBuilder
 
 
 class EngineTesting(object):
@@ -11,12 +15,23 @@ class EngineTesting(object):
         self._secret = secret
 
         with open(path, "r") as file:
+            filename = file.name.split('/')[-1].rsplit('.', 1)[0]
+            self._result_path = os.getcwd() + "/result_" + filename
+
+            if os.path.exists(self._result_path):
+                os.remove(self._result_path)
+
             data = file.read()
-            # base64_data = base64.b64encode(data)
-            # base64_output = base64_data.decode('utf-8')
+            self._send('clear',
+                       'clear',
+                       {})
+            self._send('link',
+                       'link',
+                       {"path": self._result_path})
             self._send('policy',
                        'update',
                        {"file_content":data, "file_type":"txt", "file_name":file.name})
+
 
 
 
@@ -38,6 +53,14 @@ class EngineTesting(object):
         requests.post(url, headers=headers, json=data)
         # time.sleep(1)
 
+    def state(self, passing_tests: bool = True):
+        data = {
+            "commits": [{"url":"commit"}],
+            "commit/status" : {"state": passing_tests}
+        }
+        self._send('mock','mock', data)
+        return self
+
     def register_user(self, username):
         self._send('pull_request',
                    'assigned',
@@ -57,7 +80,8 @@ class EngineTesting(object):
                        "requested_reviewers": [],
                        "user": {'login': creator},
                        "body": full_description ,
-                       "labels": labels
+                       "labels": labels,
+                       "commits_url": "commits"
                    }})
         return self
 
@@ -74,3 +98,16 @@ class EngineTesting(object):
                        "pull_request": {"id": id}
                    })
         return self
+
+    def wait_decision(self, seconds = 2):
+        time.sleep(seconds)
+        return self
+
+    def assert_acceptance(self) -> DecisionAssertBuilder:
+        return DecisionAssertBuilder(self, AssertType.ACCEPTANCE)
+
+    def assert_voters(self) -> DecisionAssertBuilder:
+        return DecisionAssertBuilder(self, AssertType.VOTERS)
+
+    def assert_number_of_votes(self) -> DecisionAssertBuilder:
+        return DecisionAssertBuilder(self, AssertType.VOTE_NUMBER)

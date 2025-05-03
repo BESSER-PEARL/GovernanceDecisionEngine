@@ -1,46 +1,14 @@
-import io
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from antlr4.CommonTokenStream import CommonTokenStream
-from antlr4.InputStream import InputStream
-from antlr4.tree.Tree import ParseTreeWalker
 from besser.agent.core.agent import Agent
 
 if TYPE_CHECKING:
-    from governance.engine.collaboration_metamodel import Collaboration
+    from governance.engine.semantics.collaboration_metamodel import Collaboration
 from governance.engine.events import DeadlineEvent
-from grammar import PolicyCreationListener, govdslParser, govdslLexer
-from grammar.govErrorListener import govErrorListener
 from metamodel import Policy, ComposedPolicy, Role, Deadline
 from utils.gh_extension import Patch
 
-
-def setup_parser(text):
-    lexer = govdslLexer(InputStream(text))
-    stream = CommonTokenStream(lexer)
-    parser = govdslParser(stream)
-
-    error = io.StringIO()
-
-    parser.removeErrorListeners()
-    error_listener = govErrorListener(error)
-    parser.addErrorListener(error_listener)
-
-    return parser
-
-def parse_text(text):
-        parser = setup_parser(text)
-        tree = parser.policy()
-
-        listener = PolicyCreationListener()
-        walker = ParseTreeWalker()
-        walker.walk(listener, tree)
-        return listener.get_policy()
-
-def parse(path):
-    with open(path, "r") as file:
-        return parse_text(file.read())
 
 def get_all_roles(policy):
     roles: dict[str,Role]= dict()
@@ -108,12 +76,9 @@ def start_policies(agent: Agent, policies: list[Policy], collab: 'Collaboration'
         # Find deadlines and send the associated events
         deadlines = [d for d in starting_policy.conditions if isinstance(d, Deadline)]
         for deadline in deadlines:
-            timestamp = datetime.now().timestamp()
-            timestamp += 10
-            agent.receive_event(DeadlineEvent(collab, starting_policy, timestamp))
-            # if deadline.date is not None:
-            #     timestamp = deadline.date.timestamp()
-            #     agent.receive_event(DeadlineEvent(collab, starting_policy, timestamp))
-            # else:
-            #     timestamp = (datetime.now() + deadline.offset).timestamp()
-            #     agent.receive_event(DeadlineEvent(collab, starting_policy, timestamp))
+            if deadline.date is not None:
+                timestamp = deadline.date.timestamp()
+                agent.receive_event(DeadlineEvent(collab, starting_policy, timestamp))
+            else:
+                timestamp = (datetime.now() + deadline.offset).timestamp()
+                agent.receive_event(DeadlineEvent(collab, starting_policy, timestamp))

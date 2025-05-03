@@ -1,6 +1,4 @@
-import pytest
-
-from governance.engine.collaboration_metamodel import Interaction, Collaboration
+from governance.engine.semantics.collaboration_metamodel import Interaction, Collaboration
 from governance.language.governance_metamodel import Role, CollabType
 from metamodel import Individual
 
