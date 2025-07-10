@@ -18,8 +18,9 @@ from governance.engine.testing.platform_mock import PlatformMock
 logger.setLevel(logging.INFO)
 
 def setup(testing: bool) -> Agent:
+    logger.info(os.getcwd())
     agent = Agent('decision_engine')
-    agent.load_properties('config.ini')
+    agent.load_properties('../../config.ini')
 
     if not testing:
         websocket_platform = agent.use_websocket_platform(use_ui=True)
@@ -45,7 +46,9 @@ def setup(testing: bool) -> Agent:
     update_policy.set_body(update_policy_body)
     individual_state.set_body(individual_body)
     platform = PlatformMock(agent) if testing else gh_platform
+    os.environ["ENGINE_TESTING"] = "True"
     collab_state.set_body(collab_bodybuilder(platform, agent))
+    os.environ["ENGINE_TESTING"] = "False"
     vote_state.set_body(vote_body)
     decide_state.set_body(decide_bodybuilder(gh_platform,agent))
 

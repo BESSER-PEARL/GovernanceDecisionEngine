@@ -1,0 +1,48 @@
+Scopes:
+    Projects :
+        testProjectGH from GitHub : gwendal-jouneaux/DecisionEngineTest {
+            Activities :
+                myActivity {
+                    Tasks :
+                        myTask : Pull request {
+                            Action : merge
+                        }
+                }
+        }
+    Activities :
+        myActivity2
+    Tasks :
+        myTask2
+Participants:
+    Profiles:
+        joeProfile {
+            gender : male
+            race : hispanic
+        }
+    Roles : maintainer, reviewer, owner
+    Individuals :
+        joe {
+            vote value : 0.7
+            profile : joeProfile
+        },
+        (Agent) mike {
+            confidence : 0.8
+            role : reviewer
+        },
+        gwendal-jouneaux {
+            role : reviewer
+        },
+        Gwandalff {
+            role : reviewer
+        }
+
+MajorityPolicy testPolicy {
+    Scope: myTask
+    DecisionType as BooleanDecision
+    Participant list : reviewer
+    Conditions:
+        Deadline reviewDeadline : 14 days
+        ParticipantExclusion : mike
+    Parameters:
+        ratio : 0.5
+}

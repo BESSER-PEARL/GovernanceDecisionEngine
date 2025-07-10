@@ -3,9 +3,5 @@ API
 
 .. toctree::
 
-   api/core
-   api/db
-   api/exceptions
-   api/library
-   api/nlp
-   api/platforms
+   api/engine/collaboration_metamodel
+   api/engine/events

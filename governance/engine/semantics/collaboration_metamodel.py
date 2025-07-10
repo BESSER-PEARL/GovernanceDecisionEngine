@@ -1,0 +1,187 @@
+import time
+
+from besser.agent.core.agent import Agent
+
+from governance.engine.semantics.policy_visitor import visitPolicy, visitComposedPolicy
+from metamodel import Role, Policy, Scope, Individual, StatusEnum, ComposedPolicy, hasRole, SinglePolicy
+
+
+# Modification for the Individual class
+class DynamicIndividual(Individual):
+    def __init__(self, individual: Individual, interaction):
+        super().__init__(individual.name, individual.vote_value)
+        self._interaction: Interaction = interaction
+        self._proposes: set['Collaboration'] = set()
+        self._leads: set['Collaboration'] = set()
+        self._votes: set['Vote'] = set()
+        self._enacted_roles: set[hasRole] = set()
+
+    def __eq__(self, other):
+        if not isinstance(other, Individual):
+            return False
+        return self.name == other.name
+
+    def __hash__(self):
+        return hash(self.name)
+
+    @property
+    def votes(self):
+        return self._votes
+
+    @property
+    def proposes(self):
+        return self._proposes
+
+    @property
+    def leads(self):
+        return self._leads
+
+    @property
+    def enacted_roles(self):
+        return self._enacted_roles
+
+class Interaction:
+    def __init__(self):
+        self._individuals: dict[str, DynamicIndividual] = dict()
+        self._collaborations: dict[int,Collaboration] = dict()
+        self._decisions: set[Decision] = set()
+
+    @property
+    def individuals(self):
+        return self._individuals
+
+    @property
+    def collaborations(self):
+        return self._collaborations
+
+    @property
+    def decisions(self):
+        return self._decisions
+
+    def get_or_create_dynamic_individual(self, id: str) -> DynamicIndividual:
+        if id not in self._individuals:
+            u = Individual(id)
+            self._individuals[id] = DynamicIndividual(u, self)
+        return self._individuals[id]
+
+    def propose(self, individual: DynamicIndividual, id: int, scope: Scope, rationale: str)-> 'Collaboration':
+        collab = Collaboration(self, id, scope, rationale, individual)
+        self._collaborations[id] = collab
+        return collab
+
+    def make_decision(self, collab: 'Collaboration', rule: Policy, agent: Agent) -> 'Decision':
+        result = visitPolicy(collab, rule, agent)
+        decision = Decision(self, result, time.time(), collab, collab.ballot_boxes[rule], rule)
+
+        if result is not None:
+            if collab.scope.status == StatusEnum.ACCEPTED:
+                collab.scope.status = StatusEnum.PARTIAL
+
+            for vote in collab.ballot_boxes[rule]:
+                vote._part_of = decision
+            self._decisions.add(decision)
+            if rule.parent is None:
+                collab._is_decided = decision
+                collab.scope.status = StatusEnum.COMPLETED
+            return decision
+        return None
+
+    def compose_decision(self, collab: 'Collaboration', rule: ComposedPolicy, known_result: bool | None = None) -> 'Decision':
+        decision = None
+        if known_result is not None:
+            decision = Decision(self, known_result, time.time(), collab, collab.ballot_boxes[rule], rule)
+        else:
+            result = visitComposedPolicy(collab, rule)
+            decision = Decision(self, result, time.time(), collab, collab.ballot_boxes[rule], rule)
+
+        if decision._accepted:
+            collab.scope.status = StatusEnum.PARTIAL
+
+        for vote in collab.ballot_boxes[rule]:
+            vote._part_of = decision
+        self._decisions.add(decision)
+        if rule.parent is None:
+            collab._is_decided.add(decision)
+            collab.scope.status = StatusEnum.COMPLETED
+        return decision
+
+
+class Collaboration:
+    def __init__(self, interaction: Interaction, id: int, scope: Scope, rationale: str, creator: DynamicIndividual):
+        self._interaction: Interaction = interaction
+        self._id: int = id
+        self._scope: Scope = scope
+        self._rationale: str = rationale
+        self._proposed_by: DynamicIndividual = creator
+        self._leader: DynamicIndividual = creator
+        self._is_decided: Decision = None
+        self._ballot_boxes: dict[Policy, set[Vote]] = dict()
+        creator.proposes.add(self)
+        creator.leads.add(self)
+
+    def vote(self, individual: DynamicIndividual, agreement: bool, rationale: str):
+        vote = Vote(agreement, time.time(), rationale, individual)
+        for policy in self._ballot_boxes:
+            if isinstance(policy, SinglePolicy):
+                valid_vote = False
+                for participant in policy.participants:
+                    if isinstance(participant, Role):
+                        for registered in participant.individuals:
+                            if individual.name == registered.name:
+                                valid_vote = True
+                                individual.enacted_roles.add(hasRole(individual.name, participant, individual, self.scope))
+                    elif individual == participant:
+                        valid_vote = True
+                        part_indiv: Individual = participant # if not a role it is an individual
+                        role = part_indiv.role_assignement.role
+                        individual.enacted_roles.add(hasRole(individual.name, role, individual, self.scope))
+                if valid_vote:
+                    box: set[Vote] = self._ballot_boxes[policy]
+                    box.add(vote)
+                    individual.votes.add(vote)
+                    parent = policy.parent
+                    while parent is not None:
+                        box: set[Vote] = self._ballot_boxes[parent]
+                        box.add(vote)
+
+
+    @property
+    def leader(self):
+        return self._leader
+
+    @leader.setter
+    def leader(self, individual: DynamicIndividual):
+        self._leader.leads.remove(self)
+        self._leader = individual
+        individual.leads.add(self)
+
+    @property
+    def scope(self):
+        return self._scope
+
+    @property
+    def ballot_boxes(self):
+        return self._ballot_boxes
+
+class Vote:
+    def __init__(self, agreement: bool, timestamp: float, rationale: str, voted_by: DynamicIndividual):
+        self._agreement: bool = agreement
+        self._timestamp: float = timestamp
+        self._rationale: str = rationale
+        self._voted_by: DynamicIndividual = voted_by
+        self._part_of: Decision = None
+
+    @property
+    def voted_by(self):
+        return self._voted_by
+
+class Decision:
+    def __init__(self, interaction: Interaction, accepted: bool, timestamp: float, collab: Collaboration, votes: set[Vote], rule: Policy):
+        self._interaction: Interaction = interaction
+        self._accepted: bool = accepted
+        self._timestamp: float = timestamp
+        self._decides: Collaboration = collab
+        self._votes: set[Vote] = votes
+        self._rule: Policy = rule
+
+
