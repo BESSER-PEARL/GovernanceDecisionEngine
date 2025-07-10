@@ -102,15 +102,15 @@ def decide_bodybuilder(platform, agent):
         if result is None:
             to_start = find_policies_in(parent, deadline_event.collab)
             start_function(agent, to_start, deadline_event.collab)
-        # else:
-        #     scope = deadline_event.collab.scope
-        #     if isinstance(scope, Patch):
-        #         if deadline_event.policy.scope.action == ActionEnum.MERGE:
-        #             pr = scope.element
-        #             if isinstance(pr, PullRequest):
-        #                 platform.put(f"/repos/{scope.activity.project.repo_id}/pulls/{pr.payload["number"]}/merge",
-        #                     data={
-        #                         "commit_title":"Validated Merge",
-        #                         "commit_message":"Merge of a pull request validated by the decision engine"
-        #                     })
+        elif result._accepted:
+            scope = deadline_event.policy.scope
+            if isinstance(scope, Patch):
+                if scope.action == ActionEnum.MERGE:
+                    pr = deadline_event.collab.scope.element
+                    if isinstance(pr, PullRequest):
+                        platform.put(f"/repos/{scope.activity.project.repo_id}/pulls/{pr.payload["number"]}/merge",
+                            data={
+                                "commit_title":"Validated Merge",
+                                "commit_message":"Merge of a pull request validated by the decision engine"
+                            })
     return decide_body
