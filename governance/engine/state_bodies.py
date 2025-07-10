@@ -1,9 +1,13 @@
 import base64
 import os
 
+from aiohttp import ClientSession
 from besser.agent.core.session import Session
 from besser.agent.library.transition.events.base_events import ReceiveFileEvent
 from besser.agent.library.transition.events.github_webhooks_events import GitHubEvent
+from besser.agent.exceptions.logger import logger
+from besser.agent.platforms.github.github_objects import Issue
+from gidgethub.aiohttp import GitHubAPI
 
 from governance.engine.parsing import parse_text
 from governance.engine.semantics.collaboration_metamodel import Interaction
@@ -13,10 +17,11 @@ from governance.engine.semantics.helpers import find_policies_in, find_starting_
     find_policy_for
 from governance.engine.testing.helpers import start_testing_policies
 from metamodel import ComposedPolicy
+from utils.gh_extension import Patch, PullRequest, ActionEnum
 
 
 def init_body(session: Session):
-    session.set("policy", None)
+    session.set("policies", None)
     session.set("interactions", Interaction())
 
 def read_policy_bodybuilder(agent):
@@ -28,7 +33,7 @@ def read_policy_bodybuilder(agent):
 
 def update_policy_body(session: Session):
     update_event: UpdatePolicyEvent = session.event
-    session.set("policy", parse_text(update_event.text))
+    session.set("policies", parse_text(update_event.text))
 
 def gh_webhooks_bodybuilder(agent):
     def gh_webhooks_body(session: Session):
@@ -50,24 +55,22 @@ def individual_body(session: Session):
     # for role in individual_event.roles:
     #     if policy_roles[role.lower()]:
     #         effective_roles.add(policy_roles[role.lower()])
-    session.get("interactions").add_individual(individual_event.login, effective_roles)
+    session.get("interactions").get_or_create_dynamic_individual(individual_event.login, effective_roles)
 
 def collab_bodybuilder(platform, agent):
     start_function = start_testing_policies if os.environ.get("ENGINE_TESTING") == "True" else start_policies
     def collab_body(session: Session):
         collab_event: CollaborationProposalEvent = session.event
-        creator = session.get("interactions").add_individual(collab_event.creator, ["CREATOR"])
+        creator = session.get("interactions").get_or_create_dynamic_individual(collab_event.creator)
         collab_event.scope.platform = platform
         collab = session.get("interactions").propose(creator,
                                       collab_event.id,
                                       collab_event.scope,
-                                      collab_event.title + "\n\nComment:\n" + collab_event.rationale)
-        for reviewer in collab_event.reviewers:
-            session.get("interactions").add_individual(reviewer, ["REVIEWER"])
+                                      collab_event.rationale)
 
         # TODO : add the search for the appropriate policy (when we will have multiple policies)
         # Since we only have one policy we assume it does match all the scopes
-        applicable_policy = find_policy_for({session.get("policy")}, collab)
+        applicable_policy = find_policy_for(session.get("policies"), collab)
 
         if applicable_policy is not None:
             starting_policies = find_starting_policies_in(applicable_policy)
@@ -77,12 +80,12 @@ def collab_bodybuilder(platform, agent):
 
 def vote_body(session: Session):
     vote: VoteEvent = session.event
-    individual = session.get("interactions").add_individual(vote.user_login, set())
+    individual = session.get("interactions").get_or_create_dynamic_individual(vote.user_login)
     collaboration = session.get("interactions").collaborations[vote.pull_request_id] or None
     if collaboration is not None:
         collaboration.vote(individual, vote.agreement, vote.rationale)
 
-def decide_bodybuilder(agent):
+def decide_bodybuilder(platform, agent):
     start_function = start_testing_policies if os.environ.get("ENGINE_TESTING") == "True" else start_policies
     def decide_body(session: Session):
         deadline_event: DeadlineEvent = session.event
@@ -99,4 +102,15 @@ def decide_bodybuilder(agent):
         if result is None:
             to_start = find_policies_in(parent, deadline_event.collab)
             start_function(agent, to_start, deadline_event.collab)
+        # else:
+        #     scope = deadline_event.collab.scope
+        #     if isinstance(scope, Patch):
+        #         if deadline_event.policy.scope.action == ActionEnum.MERGE:
+        #             pr = scope.element
+        #             if isinstance(pr, PullRequest):
+        #                 platform.put(f"/repos/{scope.activity.project.repo_id}/pulls/{pr.payload["number"]}/merge",
+        #                     data={
+        #                         "commit_title":"Validated Merge",
+        #                         "commit_message":"Merge of a pull request validated by the decision engine"
+        #                     })
     return decide_body

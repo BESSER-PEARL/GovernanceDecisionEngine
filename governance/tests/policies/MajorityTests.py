@@ -1,11 +1,8 @@
-from governance.tests.framework.engine_testing import EngineTesting
-
+from governance.engine.testing.framework.engine_testing import EngineTesting
 
 def test_majority_rule_accept():
-    engine = EngineTesting(8901, "secret_test_webhook", '../policies/majority_policy.txt')
-    (engine.register_user("gwendal")
-     .register_user("Mike")
-     .register_user("adem")
+    engine = EngineTesting(8901, "secret_test_webhook", '../policy_examples/majority_policy.txt')
+    (engine
      .propose_collaboration("gwendal")
      .vote("gwendal", True)
      .vote("Mike", True)
@@ -17,10 +14,8 @@ def test_majority_rule_accept():
 
 
 def test_majority_rule_reject():
- engine = EngineTesting(8901, "secret_test_webhook", '../policies/majority_policy.txt')
- (engine.register_user("gwendal")
-  .register_user("Mike")
-  .register_user("adem")
+ engine = EngineTesting(8901, "secret_test_webhook", '../policy_examples/majority_policy.txt')
+ (engine
   .propose_collaboration("gwendal")
   .vote("gwendal", True)
   .vote("Mike", True)
@@ -32,10 +27,8 @@ def test_majority_rule_reject():
 
 
 def test_veto_rule_accept():
- engine = EngineTesting(8901, "secret_test_webhook", '../policies/maj_with_veto_right.txt')
- (engine.register_user("gwendal")
-  .register_user("Mike")
-  .register_user("adem")
+ engine = EngineTesting(8901, "secret_test_webhook", '../policy_examples/maj_with_veto_right.txt')
+ (engine
   .propose_collaboration("adem")
   .vote("gwendal", True)
   .vote("Mike", True)
@@ -47,10 +40,8 @@ def test_veto_rule_accept():
 
 # Fails due to vetoers only parsed as Role and not as Individual
 def test_veto_rule_reject():
- engine = EngineTesting(8901, "secret_test_webhook", '../policies/maj_with_veto_right.txt')
- (engine.register_user("gwendal")
-  .register_user("Mike")
-  .register_user("adem")
+ engine = EngineTesting(8901, "secret_test_webhook", '../policy_examples/maj_with_veto_right.txt')
+ (engine
   .propose_collaboration("adem")
   .vote("gwendal", True)
   .vote("Mike", True)

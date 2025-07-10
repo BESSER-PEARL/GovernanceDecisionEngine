@@ -1,0 +1,48 @@
+Scopes:
+    Projects :
+        testProjectGH from GitHub : owner/repo {
+            Activities :
+                myActivity {
+                    Tasks :
+                        myTask : Pull request {
+                            Action : review
+                        }
+                }
+        }
+    Activities :
+        myActivity2
+    Tasks :
+        myTask2
+Participants:
+    Profiles:
+        joeProfile {
+            gender : male
+            race : hispanic
+        }
+    Roles : maintainer, reviewer, owner
+    Individuals :
+        joe {
+            vote value : 0.7
+            profile : joeProfile
+        },
+        (Agent) Mike {
+            confidence : 0.8
+            role : reviewer
+        },
+        adem {
+            role : reviewer
+        },
+        gwendal {
+            role : reviewer
+        }
+MajorityPolicy TestPolicy {
+    Scope: myTask
+    DecisionType as BooleanDecision
+    Participant list : reviewer
+    Conditions:
+        Deadline reviewDeadline : 14 days
+        ParticipantExclusion : Mike
+        MinParticipants : 2
+    Parameters:
+        ratio : 0.5
+}

@@ -25,8 +25,11 @@ def result_body(session: Session):
 
     def get_login(vote: Vote):
         return vote.voted_by.name
-    struct = {"acceptance": result._accepted,
-           "voters": list(map(get_login, result._votes))}
+    struct = {"acceptance": None,
+           "voters": None}
+    if result is not None:
+        struct = {"acceptance": result._accepted,
+              "voters": list(map(get_login, result._votes))}
 
     path = session.get("test_result_path")
     with open(path, "w") as file:

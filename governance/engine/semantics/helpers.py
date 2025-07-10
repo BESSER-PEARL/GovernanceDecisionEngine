@@ -3,10 +3,12 @@ from typing import TYPE_CHECKING
 
 from besser.agent.core.agent import Agent
 
+from governance.engine.semantics.scope_comparator import compare_scopes, MatchingType
+
 if TYPE_CHECKING:
     from governance.engine.semantics.collaboration_metamodel import Collaboration
 from governance.engine.events import DeadlineEvent
-from metamodel import Policy, ComposedPolicy, Role, Deadline
+from metamodel import Policy, ComposedPolicy, Role, Deadline, Project, Activity, Task
 from utils.gh_extension import Patch
 
 
@@ -24,33 +26,23 @@ def get_all_roles(policy):
     return roles
 
 def find_policy_for(policies: set[Policy], collab: 'Collaboration'):
+    matching_policy: Policy = None
     for policy in policies:
         expected_scope = policy.scope
         received_scope = collab.scope
-        if type(expected_scope) == type(received_scope):
-            if isinstance(expected_scope, Patch):
-                if expected_scope.action is not None and expected_scope.action != received_scope.action:
-                    continue
-                expected_elem = expected_scope.element
-                received_elem = received_scope.element
-                if type(expected_elem) != type(received_elem):
-                    continue
-                if expected_elem.labels is None:
-                    return policy
-                match = True
-                for label in expected_elem.labels:
-                    if label not in received_elem.labels:
-                        match = False
-                        break
-                if match:
-                    return policy
-    return None
+        matching = compare_scopes(expected_scope, received_scope)
+        if matching == MatchingType.MATCH:
+            return policy
+        elif matching == MatchingType.INCLUDE:
+            if (matching_policy is None or
+                    (isinstance(expected_scope, Activity) and isinstance(matching_policy.scope, Project))):
+                matching_policy = policy
+    return matching_policy
 
 def find_starting_policies_in(policy: Policy) -> list[Policy]:
     out = [policy]
     if isinstance(policy, ComposedPolicy):
         if policy.sequential:
-            # get the first phase in traverse order (should be a list)
             first_phase = policy.phases[0]
             out.extend(find_starting_policies_in(first_phase))
         else:

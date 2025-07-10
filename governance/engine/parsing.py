@@ -23,12 +23,12 @@ def setup_parser(text):
 
 def parse_text(text):
         parser = setup_parser(text)
-        tree = parser.policy()
+        tree = parser.governance()
 
         listener = PolicyCreationListener()
         walker = ParseTreeWalker()
         walker.walk(listener, tree)
-        return listener.get_policy()
+        return listener.get_policies()
 
 def parse(path):
     with open(path, "r") as file:

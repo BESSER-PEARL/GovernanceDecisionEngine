@@ -11,7 +11,7 @@ if TYPE_CHECKING:
 
 from metamodel import Policy, ConsensusPolicy, LazyConsensusPolicy, VotingPolicy, MajorityPolicy, \
     AbsoluteMajorityPolicy, LeaderDrivenPolicy, ComposedPolicy, Condition, ParticipantExclusion, \
-    MinimumParticipant, VetoRight, Role
+    MinimumParticipant, VetoRight, Role, Individual
 
 
 def visitPolicy(collab: 'Collaboration', rule: Policy, agent: Agent) -> bool:
@@ -25,15 +25,14 @@ def visitPolicy(collab: 'Collaboration', rule: Policy, agent: Agent) -> bool:
         return visitAbsoluteMajorityPolicy(collab, rule)
     if isinstance(rule, VotingPolicy):
         return visitVotingPolicy(collab, rule)
-    if isinstance(rule, LeaderDrivenPolicy, agent):
-        return visitLeaderDrivenPolicy(collab, rule)
+    if isinstance(rule, LeaderDrivenPolicy):
+        return visitLeaderDrivenPolicy(collab, rule, agent)
     if isinstance(rule, ComposedPolicy):
         return visitComposedPolicy(collab, rule)
 
 def visitConsensusPolicy(collab: 'Collaboration', rule:ConsensusPolicy) -> bool:
-    for cond in rule.conditions:
-        if not visitCondition(collab, rule, cond):
-            return False
+    if not check_conditions(collab, rule, rule.conditions):
+        return False
 
     vote_count: int = 0
     for vote in collab.ballot_boxes[rule]:
@@ -43,12 +42,27 @@ def visitConsensusPolicy(collab: 'Collaboration', rule:ConsensusPolicy) -> bool:
     return vote_count / ratio > len(collab.ballot_boxes[rule])
 
 def visitLazyConsensusPolicy(collab: 'Collaboration', rule:LazyConsensusPolicy) -> bool:
-    pass
+    if not check_conditions(collab, rule, rule.conditions):
+        return False
+
+    potential_participant = set()
+    for p in rule.participants:
+        if isinstance(p, Role):
+            potential_participant.union(p.individuals)
+        else:  # is individual
+            potential_participant.add(p)
+
+    vote_count: int = 0
+    for vote in collab.ballot_boxes[rule]:
+        vote_count += 1 if vote._agreement else 0
+
+    positive_abstention = len(potential_participant) - len(collab.ballot_boxes[rule])
+    ratio = rule.ratio if rule.ratio is not None else 0.5
+    return (vote_count + positive_abstention) / ratio > len(potential_participant)
 
 def visitVotingPolicy(collab: 'Collaboration', rule:VotingPolicy) -> bool:
-    for cond in rule.conditions:
-        if not visitCondition(collab, rule, cond):
-            return False
+    if not check_conditions(collab, rule, rule.conditions):
+        return False
 
     vote_count: int = 0
     for vote in collab.ballot_boxes[rule]:
@@ -58,9 +72,8 @@ def visitVotingPolicy(collab: 'Collaboration', rule:VotingPolicy) -> bool:
     return vote_count / ratio > len(collab.ballot_boxes[rule])
 
 def visitMajorityPolicy(collab: 'Collaboration', rule:MajorityPolicy) -> bool:
-    for cond in rule.conditions:
-         if not visitCondition(collab, rule, cond):
-             return False
+    if not check_conditions(collab, rule, rule.conditions):
+        return False
 
     vote_count: int = 0
     for vote in collab.ballot_boxes[rule]:
@@ -70,21 +83,26 @@ def visitMajorityPolicy(collab: 'Collaboration', rule:MajorityPolicy) -> bool:
     return vote_count / ratio > len(collab.ballot_boxes[rule])
 
 def visitAbsoluteMajorityPolicy(collab: 'Collaboration', rule:AbsoluteMajorityPolicy) -> bool:
-    for cond in rule.conditions:
-        if not visitCondition(collab, rule, cond):
-            return False
+    if not check_conditions(collab, rule, rule.conditions):
+        return False
 
     vote_count: int = 0
     for vote in collab.ballot_boxes[rule]:
         vote_count += 1 if vote._agreement else 0
     # avoid float comparison
     ratio = rule.ratio if rule.ratio is not None else 0.5
-    return vote_count / ratio > len(collab.ballot_boxes[rule])
+    potential_participant = set()
+    for p in rule.participants:
+        if isinstance(p, Role):
+            potential_participant.union(p.individuals)
+        else: # is individual
+            potential_participant.add(p)
+
+    return vote_count / ratio > len(potential_participant)
 
 def visitLeaderDrivenPolicy(collab: 'Collaboration', rule:LeaderDrivenPolicy, agent: Agent) -> bool:
-    for cond in rule.conditions:
-        if not visitCondition(collab, rule, cond):
-            return False
+    if not check_conditions(collab, rule, rule.conditions):
+        return False
 
     if rule.default in collab.ballot_boxes:
         return visitPolicy(collab, rule.default, agent)
@@ -115,6 +133,21 @@ def visitComposedPolicy(collab: 'Collaboration', rule:ComposedPolicy) -> bool | 
     return None if not finished else rule.require_all
 
 
+def check_conditions(collab: 'Collaboration', rule: Policy, conds: set[Condition]) -> bool:
+    exclusion = None
+    other = set()
+    for cond in conds:
+        if isinstance(cond, ParticipantExclusion):
+            exclusion = cond
+        else:
+            other.add(cond)
+
+    if not visitCondition(collab, rule, exclusion):
+        return False
+    for cond in other:
+        if not visitCondition(collab, rule, cond):
+            return False
+    return True
 
 
 def visitCondition(collab: 'Collaboration', rule: Policy, cond: Condition) -> bool:
@@ -130,12 +163,9 @@ def visitCondition(collab: 'Collaboration', rule: Policy, cond: Condition) -> bo
     return True
 
 def visitParticipantExclusion(collab: 'Collaboration', rule: Policy, cond: ParticipantExclusion) -> bool:
-    names = []
-    for excl in cond.excluded:
-        names.append(excl.name)
     to_remove = set()
     for vote in collab.ballot_boxes[rule]:
-        if vote.voted_by.name in names:
+        if vote.voted_by in cond.excluded:
             vote.voted_by.votes.remove(vote)
             to_remove.add(vote)
     collab.ballot_boxes[rule] = collab.ballot_boxes[rule] - to_remove
@@ -146,15 +176,14 @@ def visitMinimumParticipant(collab: 'Collaboration', rule: Policy, cond: Minimum
     return len(collab.ballot_boxes[rule]) >= cond.min_participants
 
 def visitVetoRight(collab: 'Collaboration', rule: Policy, cond: VetoRight) -> bool:
-    veto_roles = []
-    veto_names = []
+    vetoers = set()
     for vetoer in cond.vetoers:
         if isinstance(vetoer, Role):
-            veto_roles.append(vetoer.name)
+            vetoers = vetoers.union(vetoer.individuals)
         else:
-            veto_names.append(vetoer.name)
+            vetoers.add(vetoer)
     for vote in collab.ballot_boxes[rule]:
-        if vote.voted_by.name in veto_names or  vote.voted_by.role in veto_roles:
+        if vote.voted_by in vetoers:
             if not vote._agreement:
                 return False
 

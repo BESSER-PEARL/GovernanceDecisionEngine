@@ -4,8 +4,9 @@ from besser.agent.core.transition.event import Event
 from besser.agent.library.transition.events.github_webhooks_events import PullRequestOpened, GitHubEvent, \
     PullRequestAssigned
 
-from metamodel import SinglePolicy, Scope, Task, StatusEnum
-from utils.gh_extension import Patch, PullRequest, ActionEnum
+from metamodel import SinglePolicy, Scope, Task, StatusEnum, Activity
+from utils.gh_extension import Patch, PullRequest, ActionEnum, Repository
+from besser.agent.exceptions.logger import logger
 
 
 class DeadlineEvent(Event):
@@ -74,19 +75,8 @@ class CollaborationProposalEvent(EngineEvent):
 
     @property
     def id(self):
+        logger.info("ID : " + str(self.payload["pull_request"]["id"]))
         return self.payload["pull_request"]["id"]
-
-    @property
-    def title(self):
-        return self.payload["pull_request"]["title"]
-
-    @property
-    def reviewers(self):
-        requested_reviewers = self.payload["pull_request"]["requested_reviewers"]
-        reviewers = []
-        for reviewer in requested_reviewers:
-            reviewers.append(reviewer["login"])
-        return reviewers
 
     @property
     def creator(self):
@@ -94,17 +84,26 @@ class CollaborationProposalEvent(EngineEvent):
 
     @property
     def rationale(self):
-        return self.payload["pull_request"]["body"]
+        return self.payload["pull_request"]["title"]
 
     @property
     def scope(self):
+        repoID = self.payload["repository"]["full_name"]
+        title = f"Pull Request #{self.payload['pull_request']['id']} of {repoID}"
         labels_payload = self.payload["pull_request"]["labels"]
         labels = set()
         for label in labels_payload:
             labels.add(label["name"])
-        pr = PullRequest(self.title, labels)
+        pr = PullRequest(title, labels)
         pr.payload = self.payload["pull_request"]
-        return Patch(self.title, StatusEnum.ACCEPTED, ActionEnum.MERGE, pr)
+        scope = Patch(title, StatusEnum.ACCEPTED, ActionEnum.ALL, pr)
+
+
+        scope.activity = Activity("", StatusEnum.ACCEPTED)
+        scope.activity.tasks = {scope}
+        scope.activity.project = Repository("Repository "+repoID, StatusEnum.ACCEPTED, repoID)
+        scope.activity.project.activities = {scope.activity}
+        return scope
 
 
 class VoteEvent(EngineEvent):

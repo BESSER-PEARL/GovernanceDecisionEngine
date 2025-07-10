@@ -3,16 +3,26 @@ import time
 from besser.agent.core.agent import Agent
 
 from governance.engine.semantics.policy_visitor import visitPolicy, visitComposedPolicy
-from metamodel import Role, Policy, Scope, Individual, StatusEnum, ComposedPolicy
+from metamodel import Role, Policy, Scope, Individual, StatusEnum, ComposedPolicy, hasRole, SinglePolicy
+
 
 # Modification for the Individual class
 class DynamicIndividual(Individual):
-    def __init__(self, individual: Individual):
-        super().__init__(individual.name, individual.confidence)
-        self._interaction: Interaction = None
+    def __init__(self, individual: Individual, interaction):
+        super().__init__(individual.name, individual.vote_value)
+        self._interaction: Interaction = interaction
         self._proposes: set['Collaboration'] = set()
         self._leads: set['Collaboration'] = set()
         self._votes: set['Vote'] = set()
+        self._enacted_roles: set[hasRole] = set()
+
+    def __eq__(self, other):
+        if not isinstance(other, Individual):
+            return False
+        return self.name == other.name
+
+    def __hash__(self):
+        return hash(self.name)
 
     @property
     def votes(self):
@@ -25,6 +35,10 @@ class DynamicIndividual(Individual):
     @property
     def leads(self):
         return self._leads
+
+    @property
+    def enacted_roles(self):
+        return self._enacted_roles
 
 class Interaction:
     def __init__(self):
@@ -44,11 +58,10 @@ class Interaction:
     def decisions(self):
         return self._decisions
 
-    def add_individual(self, id: str, roles: set[Role]) -> DynamicIndividual:
+    def get_or_create_dynamic_individual(self, id: str) -> DynamicIndividual:
         if id not in self._individuals:
             u = Individual(id)
-            self._individuals[id] = DynamicIndividual(u)
-            return u
+            self._individuals[id] = DynamicIndividual(u, self)
         return self._individuals[id]
 
     def propose(self, individual: DynamicIndividual, id: int, scope: Scope, rationale: str)-> 'Collaboration':
@@ -101,7 +114,6 @@ class Collaboration:
         self._rationale: str = rationale
         self._proposed_by: DynamicIndividual = creator
         self._leader: DynamicIndividual = creator
-        # self._votes: set[Vote] = set()
         self._is_decided: Decision = None
         self._ballot_boxes: dict[Policy, set[Vote]] = dict()
         creator.proposes.add(self)
@@ -110,9 +122,28 @@ class Collaboration:
     def vote(self, individual: DynamicIndividual, agreement: bool, rationale: str):
         vote = Vote(agreement, time.time(), rationale, individual)
         for policy in self._ballot_boxes:
-            box: set[Vote] = self._ballot_boxes[policy]
-            box.add(vote)
-        individual.votes.add(vote)
+            if isinstance(policy, SinglePolicy):
+                valid_vote = False
+                for participant in policy.participants:
+                    if isinstance(participant, Role):
+                        for registered in participant.individuals:
+                            if individual.name == registered.name:
+                                valid_vote = True
+                                individual.enacted_roles.add(hasRole(individual.name, participant, individual, self.scope))
+                    elif individual == participant:
+                        valid_vote = True
+                        part_indiv: Individual = participant # if not a role it is an individual
+                        role = part_indiv.role_assignement.role
+                        individual.enacted_roles.add(hasRole(individual.name, role, individual, self.scope))
+                if valid_vote:
+                    box: set[Vote] = self._ballot_boxes[policy]
+                    box.add(vote)
+                    individual.votes.add(vote)
+                    parent = policy.parent
+                    while parent is not None:
+                        box: set[Vote] = self._ballot_boxes[parent]
+                        box.add(vote)
+
 
     @property
     def leader(self):

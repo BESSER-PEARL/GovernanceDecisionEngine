@@ -1,4 +1,3 @@
-import base64
 import json
 import os
 import time
@@ -6,7 +5,7 @@ import time
 import requests
 import hmac
 
-from governance.tests.framework.assert_builder import AssertType, DecisionAssertBuilder
+from governance.engine.testing.framework.assert_builder import AssertType, DecisionAssertBuilder
 
 
 class EngineTesting(object):
@@ -69,20 +68,25 @@ class EngineTesting(object):
                    }})
         return self
 
-    def propose_collaboration(self,creator, id = 1, title = "Collaboration", description = "Collaboration", labels = []):
+    def propose_collaboration(self,creator,repo = "owner/repo", id = 1, title = "Collaboration", description = "Collaboration", labels = []):
         full_title = title+' '+str(id)
         full_description = description+' '+str(id)
         self._send('pull_request',
                    'opened',
-                   {"pull_request": {
-                       "id": id,
-                       "title": full_title,
-                       "requested_reviewers": [],
-                       "user": {'login': creator},
-                       "body": full_description ,
-                       "labels": labels,
-                       "commits_url": "commits"
-                   }})
+                   {
+                       "pull_request": {
+                           "id": id,
+                           "title": full_title,
+                           "requested_reviewers": [],
+                           "user": {'login': creator},
+                           "body": full_description ,
+                           "labels": labels,
+                           "commits_url": "commits"
+                       },
+                       "repository": {
+                           "full_name":repo
+                       }
+                   })
         return self
 
     def vote(self, username, agreement: bool, id = 1):
