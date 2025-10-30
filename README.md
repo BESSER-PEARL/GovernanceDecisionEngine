@@ -15,7 +15,7 @@ This repository is structured as follows:
     - `policy_examples/` : This folder contains the policy definitions for the tests
 
 ## Prerequisite
-- Python 3.11
+- Python 3.12
 - Recommended: Create a virtual environment
   (e.g. `venv <https://docs.python.org/3/library/venv.html>`_,
   `conda <https://conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html>`_)
