@@ -7,7 +7,7 @@ from governance.engine.semantics.helpers import start_policies
 from utils.chp_extension import CheckCiCd, LabelCondition, Repository
 
 if TYPE_CHECKING:
-    from governance.engine.semantics.collaboration_metamodel import Collaboration
+    from governance.engine.semantics.runtime_metamodel import Collaboration
 
 from metamodel import Policy, ConsensusPolicy, LazyConsensusPolicy, VotingPolicy, MajorityPolicy, \
     AbsoluteMajorityPolicy, LeaderDrivenPolicy, ComposedPolicy, Condition, ParticipantExclusion, \

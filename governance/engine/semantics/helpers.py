@@ -6,7 +6,7 @@ from besser.agent.core.agent import Agent
 from governance.engine.semantics.scope_comparator import compare_scopes, MatchingType
 
 if TYPE_CHECKING:
-    from governance.engine.semantics.collaboration_metamodel import Collaboration, Vote
+    from governance.engine.semantics.runtime_metamodel import Collaboration, Vote
 from governance.engine.events import DeadlineEvent, DecideEvent
 from metamodel import Policy, ComposedPolicy, Role, Deadline, Project, Activity, Task, SinglePolicy, EvaluationMode, \
     hasRole, Individual

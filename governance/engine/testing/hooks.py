@@ -3,7 +3,7 @@ import json
 from besser.agent.core.session import Session
 from besser.agent.library.transition.events.github_webhooks_events import GitHubEvent
 
-from governance.engine.semantics.collaboration_metamodel import Interaction, Decision, Vote
+from governance.engine.semantics.runtime_metamodel import Interaction, Decision, Vote
 from governance.engine.testing.platform_mock import PlatformMock
 
 

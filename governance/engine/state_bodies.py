@@ -11,7 +11,7 @@ from besser.agent.platforms.github.github_objects import Issue
 from gidgethub.aiohttp import GitHubAPI
 
 from governance.engine.parsing import parse_text
-from governance.engine.semantics.collaboration_metamodel import Interaction
+from governance.engine.semantics.runtime_metamodel import Interaction
 from governance.engine.events import DeadlineEvent, VoteEvent, CollaborationProposalEvent, UserRegistrationEvent, \
     UpdatePolicyEvent, DecideEvent
 from governance.engine.semantics.helpers import find_policies_in, find_starting_policies_in, start_policies, \

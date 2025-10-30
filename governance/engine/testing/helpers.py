@@ -3,7 +3,7 @@ from datetime import datetime
 from besser.agent.core.agent import Agent
 
 from governance.engine.events import DeadlineEvent, DecideEvent
-from governance.engine.semantics.collaboration_metamodel import Vote
+from governance.engine.semantics.runtime_metamodel import Vote
 from governance.engine.semantics.policy_visitor import check_conditions, isDecidablePolicy
 from metamodel import Policy, ComposedPolicy, Deadline, Individual, hasRole, Role
 
