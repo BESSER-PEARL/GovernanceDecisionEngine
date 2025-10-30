@@ -25,6 +25,7 @@ def result_body(session: Session):
 
     def get_login(vote: Vote):
         return vote.voted_by.name
+
     struct = {"acceptance": None,
            "voters": None}
     if result is not None:
@@ -42,7 +43,7 @@ def link_body(session: Session):
 def mock_bodybuilder(platform: PlatformMock):
     def mock_body(session: Session):
         event: GitHubEvent = session.event
-        platform.payload = event.payload
+        platform.payload = platform.payload | event.payload
     return mock_body
 
 def add_testing_hooks(agent, idle, platform: PlatformMock):

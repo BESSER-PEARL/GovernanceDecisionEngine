@@ -1,5 +1,6 @@
 import json
 import os
+import time
 from enum import Enum
 
 
@@ -30,6 +31,7 @@ class DecisionEqualsAssertBuilder(DecisionAssertBuilder):
 
     def for_policy(self, name: str):
         self._test_engine._send("result", "result", {"name":name})
+        time.sleep(1)
         path = self._test_engine._result_path
 
         while not os.path.isfile(path):

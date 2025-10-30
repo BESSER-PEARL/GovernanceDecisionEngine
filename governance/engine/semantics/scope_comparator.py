@@ -1,7 +1,7 @@
 from enum import Enum
 
 from metamodel import Scope, Task, Project, Activity
-from utils.gh_extension import Patch, Repository, ActionEnum
+from utils.chp_extension import Patch, Repository, PatchAction
 
 
 class MatchingType(Enum):
@@ -51,8 +51,8 @@ def compare_patch(expected_scope: Patch, received_scope: Patch):
     received_elem = received_scope.element
 
     if (expected_action is not None and
-        expected_action is not ActionEnum.ALL and
-        received_action is not ActionEnum.ALL and
+        expected_action is not PatchAction.ALL and
+        received_action is not PatchAction.ALL and
         expected_action != received_action):
         return MatchingType.MISMATCH
 

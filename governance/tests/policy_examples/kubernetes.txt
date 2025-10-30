@@ -1,0 +1,65 @@
+Scopes:
+    Projects:
+        K8sProject from GitHub : kubernetes/kubernetes {
+            Activities :
+                TestActivity {
+                    Tasks :
+                        TestTask : Pull request {
+                            Action : merge
+                        }
+                }
+        }
+Participants:
+    Roles : Reviewers, Approvers
+    Individuals : Author, (Agent) k8s-ci-robot,
+    dom4ha { role: Reviewers, Approvers},
+    adrianmoisey { role: Reviewers },
+    soltysh { role: Approvers },
+    Jefftree { role: Reviewers },
+    liggitt { role: Reviewers, Approvers },
+    omerap12 { role: Reviewers },
+    ffromani { role: Reviewers, Approvers },
+    jpbetz { role: Reviewers, Approvers },
+    xing-yang { role: Reviewers, Approvers },
+    sttts { role: Reviewers, Approvers },
+    JoelSpeed { role: Reviewers },
+    thockin { role: Reviewers, Approvers },
+    danwinship { role: Reviewers },
+    aojea { role: Approvers },
+    pohly { role: Reviewers, Approvers },
+    dims { role: Reviewers, Approvers },
+    Jefftree { role: Reviewers },
+    serathius { role: Reviewers, Approvers }
+ComposedPolicy pr_merge {
+    Scope: TestTask
+    Order :
+        Execution : sequential
+        RequireAll : true
+        CarryOver : true
+    Phases {
+        MajorityPolicy phase_1 {
+            DecisionType as BooleanDecision
+            Participant list : Reviewers
+            Conditions:
+                ParticipantExclusion : Author
+                LabelCondition post : lgtm
+            Parameters:
+                ratio : 0.0
+        }
+        MajorityPolicy phase_2 {
+            DecisionType as BooleanDecision
+            Participant list : Approvers
+            Conditions:
+                LabelCondition post: approved
+            Parameters:
+                ratio : 1.0
+        }
+        LeaderDrivenPolicy phase_3 {
+            DecisionType as BooleanDecision
+            Participant list : k8s-ci-robot
+            Conditions:
+                LabelCondition pre: lgtm, approved
+                LabelCondition pre not: do-not-merge/hold, needs-rebase
+        }
+    }
+}

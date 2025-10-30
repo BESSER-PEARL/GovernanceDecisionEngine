@@ -7,11 +7,14 @@ from besser.agent.exceptions.logger import logger
 from besser.agent.library.transition.events.base_events import ReceiveFileEvent
 from besser.agent.library.transition.events.github_webhooks_events import PullRequestAssigned, GitHubEvent, \
     PullRequestOpened
+from besser.agent.library.transition.events.gitlab_webhooks_events import MergeRequestApproved, GitLabEvent, \
+    MergeRequestOpened, MergeRequestUnapproved, MergeRequestApproval, MergeRequestUpdated
 
 from governance.engine.events import DeadlineEvent, VoteEvent, CollaborationProposalEvent, UserRegistrationEvent, \
-    UpdatePolicyEvent
+    UpdatePolicyEvent, DecideEvent
 from governance.engine.state_bodies import individual_body, vote_body, collab_bodybuilder, \
-    decide_bodybuilder, gh_webhooks_bodybuilder, update_policy_body, init_body, read_policy_bodybuilder
+    decide_bodybuilder, gh_webhooks_bodybuilder, update_policy_body, init_body, read_policy_bodybuilder, \
+    gl_webhooks_bodybuilder, deadline_body
 from governance.engine.testing.hooks import add_testing_hooks
 from governance.engine.testing.platform_mock import PlatformMock
 
@@ -24,6 +27,7 @@ def setup(testing: bool) -> Agent:
     if not testing:
         websocket_platform = agent.use_websocket_platform(use_ui=True)
     gh_platform = agent.use_github_platform()
+    # gl_platform = agent.use_gitlab_platform()
 
 
     # STATES
@@ -31,24 +35,33 @@ def setup(testing: bool) -> Agent:
     idle = agent.new_state('idle')
     read_policy = agent.new_state('read_policy')
     gh_webhooks = agent.new_state('gh_webhooks')
+    # gl_webhooks = agent.new_state('gl_webhooks')
     update_policy = agent.new_state('update')
     individual_state = agent.new_state('individual')
     collab_state = agent.new_state('collab')
     vote_state = agent.new_state('vote')
+    deadline_state = agent.new_state('deadline')
     decide_state = agent.new_state('decide')
 
 
     # STATES BODIES' LINKING
     init.set_body(init_body)
     read_policy.set_body(read_policy_bodybuilder(agent))
-    gh_webhooks.set_body(gh_webhooks_bodybuilder(agent))
+
+    test_platform = PlatformMock(agent)
+    gh_webhooks.set_body(gh_webhooks_bodybuilder(agent, test_platform if testing else gh_platform))
+    # gl_webhooks.set_body(gl_webhooks_bodybuilder(agent, test_platform if testing else gl_platform))
+
     update_policy.set_body(update_policy_body)
     individual_state.set_body(individual_body)
-    platform = PlatformMock(agent) if testing else gh_platform
-    collab_state.set_body(collab_bodybuilder(platform, agent))
+    collab_state.set_body(collab_bodybuilder(agent))
     vote_state.set_body(vote_body)
-    decide_state.set_body(decide_bodybuilder(gh_platform,agent))
+    deadline_state.set_body(deadline_body)
+    decide_state.set_body(decide_bodybuilder(agent))
 
+    # ADDITIONAL HOOKS AND FEATURES FOR TESTING
+    if testing:
+        add_testing_hooks(agent, idle, test_platform)
 
     # TRANSITIONS DEFINITION
 
@@ -65,26 +78,30 @@ def setup(testing: bool) -> Agent:
     idle.when_event(PullRequestAssigned()).go_to(gh_webhooks)
     idle.when_event(PullRequestOpened()).go_to(gh_webhooks)
     idle.when_event(GitHubEvent("pull_request_review","submitted", None)).go_to(gh_webhooks)
+    # idle.when_event(MergeRequestUpdated()).go_to(gl_webhooks)
+    # idle.when_event(MergeRequestOpened()).go_to(gl_webhooks)
+    # idle.when_event(MergeRequestApproval()).go_to(gl_webhooks)
+    # idle.when_event(MergeRequestUnapproved()).go_to(gl_webhooks)
 
     # map workflow events to dedicated states
+    idle.when_event(DecideEvent()).go_to(decide_state)
+    idle.when_event(DeadlineEvent()).go_to(deadline_state)
     idle.when_event(UpdatePolicyEvent()).go_to(update_policy)
     idle.when_event(UserRegistrationEvent()).go_to(individual_state)
     idle.when_event(CollaborationProposalEvent()).go_to(collab_state)
     idle.when_event(VoteEvent()).go_to(vote_state)
-    idle.when_event(DeadlineEvent()).go_to(decide_state)
+
 
     # when event managed go back to idle
     read_policy.go_to(idle)
     gh_webhooks.go_to(idle)
+    # gl_webhooks.go_to(idle)
     update_policy.go_to(idle)
     individual_state.go_to(idle)
     collab_state.go_to(idle)
     vote_state.go_to(idle)
+    deadline_state.go_to(idle)
     decide_state.go_to(idle)
-
-    # ADDITIONAL HOOKS AND FEATURES FOR TESTING
-    if testing:
-        add_testing_hooks(agent, idle, platform)
 
     return agent
 

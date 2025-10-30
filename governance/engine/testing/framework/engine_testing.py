@@ -71,11 +71,39 @@ class EngineTesting(object):
     def propose_collaboration(self,creator,repo = "owner/repo", id = 1, title = "Collaboration", description = "Collaboration", labels = []):
         full_title = title+' '+str(id)
         full_description = description+' '+str(id)
+
+        key = "#" + str(id)
+        mock = {key: {
+            'id': id,
+            'number': id,
+            'title': title,
+            'user': {
+                'id': '',
+                'login': creator,
+                'html_url': '',
+                'organizations_url': '',
+                'repos_url': ''
+            },
+            'labels': labels,
+            'state': '',
+            'locked': '',
+            'assignees': '',
+            'milestone': '',
+            'url': '',
+            'repository_url': '',
+            'labels_url': '',
+            'comments_url': '',
+            'url': '',
+            'events_url': ''
+        }}
+        self._send('mock', 'mock', mock)
+
         self._send('pull_request',
                    'opened',
                    {
                        "pull_request": {
                            "id": id,
+                           "number": id,
                            "title": full_title,
                            "requested_reviewers": [],
                            "user": {'login': creator},
