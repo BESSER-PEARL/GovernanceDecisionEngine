@@ -15,10 +15,10 @@ from metamodel import Policy, ConsensusPolicy, LazyConsensusPolicy, VotingPolicy
 
 
 def visitPolicy(collab: 'Collaboration', rule: Policy, agent: Agent) -> bool:
-    if isinstance(rule, ConsensusPolicy):
-        return visitConsensusPolicy(collab, rule)
     if isinstance(rule, LazyConsensusPolicy):
         return visitLazyConsensusPolicy(collab, rule)
+    if isinstance(rule, ConsensusPolicy):
+        return visitConsensusPolicy(collab, rule)
     if isinstance(rule, MajorityPolicy):
         return visitMajorityPolicy(collab, rule)
     if isinstance(rule, AbsoluteMajorityPolicy):
@@ -39,9 +39,12 @@ def visitConsensusPolicy(collab: 'Collaboration', rule:ConsensusPolicy) -> bool:
     for vote in collab.ballot_boxes[rule]:
         vote_count += vote._vote_value if vote._agreement else 0
         total_count += vote._vote_value
-    ratio = rule.ratio if rule.ratio is not None else 0.5
+
+    if total_count == 0:
+        return False
+
     percentage = vote_count / total_count
-    return percentage > ratio or percentage == 1.0
+    return percentage >= 1.0
 
 def visitLazyConsensusPolicy(collab: 'Collaboration', rule:LazyConsensusPolicy) -> bool:
     if not check_conditions(collab, rule, rule.conditions):
@@ -60,10 +63,11 @@ def visitLazyConsensusPolicy(collab: 'Collaboration', rule:LazyConsensusPolicy) 
         vote_count += vote._vote_value if vote._agreement else 0
         total_count += vote._vote_value
 
-    positive_abstention = len(potential_participant) - len(collab.ballot_boxes[rule])
-    ratio = rule.ratio if rule.ratio is not None else 0.5
-    percentage = (vote_count + positive_abstention) / (total_count + positive_abstention)
-    return percentage > ratio or percentage == 1.0
+    if total_count == 0.0:
+        return True
+
+    percentage = vote_count / total_count
+    return percentage >= 1.0
 
 def visitVotingPolicy(collab: 'Collaboration', rule:VotingPolicy) -> bool:
     if not check_conditions(collab, rule, rule.conditions):
@@ -273,20 +277,7 @@ def isDecidableConsensusPolicy(collab: 'Collaboration', rule:ConsensusPolicy) ->
     if total_count == 0.0:
         return False
 
-    abstention = len(potential_participant) - len(collab.ballot_boxes[rule])
-    ratio = rule.ratio if rule.ratio is not None else 0.5
-    inv_ratio = 1 - ratio
-
-    deadlines = {cond for cond in rule.conditions if isinstance(cond, Deadline)}
-
-    if len(deadlines) > 0:
-        return (vote_count / (total_count + abstention) > ratio or  # still true if all abstentionists vote false
-                vote_against / (total_count + abstention) > inv_ratio or  # still false if all abstentionists vote true
-                vote_count / (total_count + abstention) == 1.0)  ## edge-case : if everyone vote true when ratio is 1
-    else:
-        return (vote_count / (total_count) > ratio or  # still true if all abstentionists vote false
-                vote_against / (total_count + abstention) > inv_ratio or  # still false if all abstentionists vote true
-                vote_count / (total_count) == 1.0)  ## edge-case : if everyone vote true when ratio is 1
+    return vote_count / len(potential_participant) == 1.0
 
 def isDecidableLazyConsensusPolicy(collab: 'Collaboration', rule:LazyConsensusPolicy) -> bool:
     if not check_conditions(collab, rule, rule.conditions):
@@ -310,20 +301,7 @@ def isDecidableLazyConsensusPolicy(collab: 'Collaboration', rule:LazyConsensusPo
     if total_count == 0.0:
         return False
 
-    abstention = len(potential_participant) - len(collab.ballot_boxes[rule])
-    ratio = rule.ratio if rule.ratio is not None else 0.5
-    inv_ratio = 1 - ratio
-
-    deadlines = {cond for cond in rule.conditions if isinstance(cond, Deadline)}
-
-    if len(deadlines) > 0:
-        return (vote_count / (total_count + abstention) > ratio or  # still true if all abstentionists vote false
-                vote_against / (total_count + abstention) > inv_ratio or  # still false if all abstentionists vote true
-                vote_count / (total_count + abstention) == 1.0)  ## edge-case : if everyone vote true when ratio is 1
-    else:
-        return (vote_count / (total_count) > ratio or  # still true if all abstentionists vote false
-                vote_against / (total_count + abstention) > inv_ratio or  # still false if all abstentionists vote true
-                vote_count / (total_count) == 1.0)  ## edge-case : if everyone vote true when ratio is 1
+    return vote_count / len(potential_participant) == 1.0
 
 def isDecidableVotingPolicy(collab: 'Collaboration', rule:VotingPolicy) -> bool:
     if not check_conditions(collab, rule, rule.conditions):

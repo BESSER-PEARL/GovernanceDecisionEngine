@@ -1,0 +1,13 @@
+Scopes:
+    Projects:
+        ethicalsourcedev from GitHub: EthicalSource/ethicalsource
+Participants:
+    Roles: BenevolentDictator
+    Individuals :
+        CoralineAda { role: BenevolentDictator},
+        tobie { role: BenevolentDictator }
+LeaderDrivenPolicy ethicalSourceDecisionMaking {
+    Scope: ethicalsourcedev
+    DecisionType as BooleanDecision
+    Participant list: BenevolentDictator
+}

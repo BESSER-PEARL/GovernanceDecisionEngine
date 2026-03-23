@@ -1,0 +1,32 @@
+Scopes:
+    Projects:
+        Interpret from GitHub : interpretml/interpret {
+            Activities : appealingIssue
+        }
+Participants:
+    Roles: Contributors, Maintainers, TSC
+    Individuals:
+        paulbkoch { role: Maintainers },
+        DerWeh { role: Maintainers }
+LazyConsensusPolicy decisionMaking {
+    Scope: Interpret
+    DecisionType as BooleanDecision
+    Participant list: Maintainers
+    Conditions:
+        Deadline deadline : 7 days
+        AppealRight : {
+            Appealers : Contributors, Maintainers, TSC
+            Policy : ConsensusPolicy appealingPolicy {
+                DecisionType as BooleanDecision
+                Participant list: Maintainers
+                Conditions:
+                    AppealRight : {
+                        Appealers : Contributors, Maintainers, TSC
+                        Policy : ConsensusPolicy appealingPolicyTSC {
+                            DecisionType as BooleanDecision
+                            Participant list: TSC
+                        }
+                }
+            }
+        }
+}
