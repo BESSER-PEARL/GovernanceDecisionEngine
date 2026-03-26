@@ -17,8 +17,8 @@ This repository is structured as follows:
 ## Prerequisite
 - Python 3.12
 - Recommended: Create a virtual environment
-  (e.g. `venv <https://docs.python.org/3/library/venv.html>`_,
-  `conda <https://conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html>`_)
+  (e.g. [`venv`](https://docs.python.org/3/library/venv.html),
+  [`conda`](https://conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html))
 - Clone the [GovernanceDSL](https://github.com/BESSER-PEARL/GovernanceDSL) repository
 - Clone this repository
 - Install the dependencies (for both repositories) by referencing to the requirements files:
