@@ -47,6 +47,7 @@ class DynamicIndividual(Individual):
 class Interaction:
     def __init__(self):
         self._individuals: dict[str, DynamicIndividual] = dict()
+        self._roles: dict[str, Role] = dict()
         self._collaborations: dict[int,Collaboration] = dict()
         self._decisions: set[Decision] = set()
 
@@ -66,6 +67,10 @@ class Interaction:
         for individual in individuals:
             self._individuals[individual.name] = DynamicIndividual(individual, self)
 
+    def register_roles(self, roles: set[Role]):
+        for role in roles:
+            self._roles[role.name] = role
+
     def get_or_create_dynamic_individual(self, id: str) -> DynamicIndividual:
         if id not in self._individuals:
             u = Individual(id)
@@ -82,9 +87,10 @@ class Interaction:
         decision = Decision(self, result, time.time(), collab, collab.ballot_boxes[rule], rule)
 
         if result is not None:
-            for cond in rule.conditions:
-                if cond.evaluation_mode == EvaluationMode.POST:
-                    visitCondition(collab, rule, cond)
+            if result:
+                for cond in rule.conditions:
+                    if cond.evaluation_mode == EvaluationMode.POST:
+                        visitCondition(collab, rule, cond)
 
             if collab.scope.status == StatusEnum.ACCEPTED:
                 collab.scope.status = StatusEnum.PARTIAL

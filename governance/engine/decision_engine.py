@@ -3,15 +3,17 @@ import logging
 import os
 
 from besser.agent.core.agent import Agent
+from besser.agent.core.session import Session
 from besser.agent.exceptions.logger import logger
 from besser.agent.library.transition.events.base_events import ReceiveFileEvent
 from besser.agent.library.transition.events.github_webhooks_events import PullRequestAssigned, GitHubEvent, \
-    PullRequestOpened
+    PullRequestOpened, IssuesOpened
 from besser.agent.library.transition.events.gitlab_webhooks_events import MergeRequestApproved, GitLabEvent, \
     MergeRequestOpened, MergeRequestUnapproved, MergeRequestApproval, MergeRequestUpdated
 
 from governance.engine.events import DeadlineEvent, VoteEvent, CollaborationProposalEvent, UserRegistrationEvent, \
     UpdatePolicyEvent, DecideEvent
+from governance.engine.semantics.runtime_metamodel import Interaction
 from governance.engine.state_bodies import individual_body, vote_body, collab_bodybuilder, \
     decide_bodybuilder, gh_webhooks_bodybuilder, update_policy_body, init_body, read_policy_bodybuilder, \
     gl_webhooks_bodybuilder, deadline_body
@@ -20,12 +22,12 @@ from governance.engine.testing.platform_mock import PlatformMock
 
 logger.setLevel(logging.INFO)
 
-def setup(testing: bool) -> Agent:
+def setup(testing: bool, playground: bool, init_policy_path: str) -> Agent:
     agent = Agent('decision_engine')
-    agent.load_properties('config.ini')
+    agent.load_properties('config.yaml')
 
     if not testing:
-        websocket_platform = agent.use_websocket_platform(use_ui=True)
+        websocket_platform = agent.use_websocket_platform(use_ui=(not playground))
     gh_platform = agent.use_github_platform()
     # gl_platform = agent.use_gitlab_platform()
 
@@ -63,12 +65,25 @@ def setup(testing: bool) -> Agent:
     if testing:
         add_testing_hooks(agent, idle, test_platform)
 
+    # MANAGING INITIAL POLICY AS PARAM
+
+    if init_policy_path is not None:
+        with open(init_policy_path, "r") as file:
+            data = file.read()
+            def init_playground(session: Session):
+                session.set("policies", None)
+                session.set("interactions", Interaction())
+                agent.receive_event(UpdatePolicyEvent(data))
+            init.set_body(init_playground)
+
     # TRANSITIONS DEFINITION
 
     if testing:
         # testing setup
         init.go_to(idle)
         idle.when_event(GitHubEvent("policy", "update", None)).go_to(gh_webhooks)
+    elif playground:
+        init.go_to(idle)
     else:
         # production setup
         init.when_event(ReceiveFileEvent()).go_to(read_policy)
@@ -77,6 +92,7 @@ def setup(testing: bool) -> Agent:
     # translate platform input to workflow events
     idle.when_event(PullRequestAssigned()).go_to(gh_webhooks)
     idle.when_event(PullRequestOpened()).go_to(gh_webhooks)
+    idle.when_event(IssuesOpened()).go_to(gh_webhooks)
     idle.when_event(GitHubEvent("pull_request_review","submitted", None)).go_to(gh_webhooks)
     # idle.when_event(MergeRequestUpdated()).go_to(gl_webhooks)
     # idle.when_event(MergeRequestOpened()).go_to(gl_webhooks)
@@ -84,12 +100,12 @@ def setup(testing: bool) -> Agent:
     # idle.when_event(MergeRequestUnapproved()).go_to(gl_webhooks)
 
     # map workflow events to dedicated states
+    idle.when_event(VoteEvent()).go_to(vote_state)
     idle.when_event(DecideEvent()).go_to(decide_state)
     idle.when_event(DeadlineEvent()).go_to(deadline_state)
     idle.when_event(UpdatePolicyEvent()).go_to(update_policy)
     idle.when_event(UserRegistrationEvent()).go_to(individual_state)
     idle.when_event(CollaborationProposalEvent()).go_to(collab_state)
-    idle.when_event(VoteEvent()).go_to(vote_state)
 
 
     # when event managed go back to idle
@@ -112,9 +128,16 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         prog='Governance Decision Engine',
         description='Agent in charge of enforcing governance policies expressed using the Governance DSL.')
-    parser.add_argument('-t','--test', action='store_true',
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument('-t','--test', action='store_true',
                         help='Start the engine in testing mode (add features and hooks for automatic testing)')
+    group.add_argument('-p', '--playground', action='store_true',
+                        help='Start the engine in Playground mode')
+    parser.add_argument('-P', '--Policy',
+                        help='Start the engine in Playground mode')
     args = parser.parse_args()
     os.environ["ENGINE_TESTING"] = str(args.test)
-    agent = setup(args.test)
+    os.environ["ENGINE_PLAYGROUND"] = str(args.playground)
+    policy_file = str(args.Policy) if args.Policy is not None else None
+    agent = setup(args.test, args.playground, policy_file)
     agent.run()

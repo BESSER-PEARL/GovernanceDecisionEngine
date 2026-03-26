@@ -7,13 +7,26 @@ from governance.engine.semantics.scope_comparator import compare_scopes, Matchin
 
 if TYPE_CHECKING:
     from governance.engine.semantics.runtime_metamodel import Collaboration, Vote
-from governance.engine.events import DeadlineEvent, DecideEvent
+from governance.engine.events import DeadlineEvent, DecideEvent, VoteEvent
 from metamodel import Policy, ComposedPolicy, Role, Deadline, Project, Activity, Task, SinglePolicy, EvaluationMode, \
     hasRole, Individual
 
+def get_reaction_for(agent, collab: 'Collaboration'):
+    reactions = collab._platform.getitem(
+        f"/repos/{collab.scope.activity.project.repo_id}/issues/{collab.scope.element.payload["number"]}/reactions"
+    )
+    for reaction in reactions:
+        if reaction["content"] != "+1" and reaction["content"] != "-1":
+            continue
+        evt = VoteEvent()
+        evt._agreement = reaction["content"] == "+1"
+        evt._pull_request_id = collab._id
+        evt._user_login = reaction["user"]["login"]
+        evt._rationale = ""
+        agent.receive_event(evt)
 
 def get_all_roles(policy):
-    roles: dict[str,Role]= dict()
+    roles: set[Role]= set()
     if isinstance(policy, ComposedPolicy):
         for phase in policy.phases:
             phase_roles = get_all_roles(phase)
@@ -21,7 +34,7 @@ def get_all_roles(policy):
     else:
         for participant in policy.participants:
             if isinstance(participant, Role):
-                roles[participant.name.lower()] = participant
+                roles.add(participant)
 
     return roles
 

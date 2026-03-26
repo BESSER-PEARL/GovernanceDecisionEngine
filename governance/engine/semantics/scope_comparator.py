@@ -1,7 +1,7 @@
 from enum import Enum
 
 from metamodel import Scope, Task, Project, Activity
-from utils.chp_extension import Patch, Repository, PatchAction
+from utils.chp_extension import Patch, Repository, PatchAction, MemberLifecycle, MemberAction
 
 
 class MatchingType(Enum):
@@ -15,6 +15,7 @@ def compare_scopes(expected_scope: Scope, received_scope: Scope):
             Project: compare_project,
             Activity: compare_activity,
             Task: compare_task,
+            MemberLifecycle: compare_member_lifecycle,
             Patch: compare_patch,
             Repository: compare_repository,
             Scope: compare_project
@@ -22,6 +23,10 @@ def compare_scopes(expected_scope: Scope, received_scope: Scope):
         compare_function = mapping[type(expected_scope)]
         return compare_function(expected_scope, received_scope)
 
+    elif isinstance(expected_scope, Patch) and isinstance(received_scope, Patch): # Issue vs PR
+        return MatchingType.MISMATCH
+    elif isinstance(expected_scope, Task) and isinstance(received_scope, Patch):
+        return compare_task(expected_scope, received_scope)
     elif isinstance(expected_scope, Task) or isinstance(received_scope, Project):
         return MatchingType.MISMATCH
     elif isinstance(received_scope, Task):
@@ -44,6 +49,17 @@ def compare_task(expected_scope: Task, received_scope: Task):
 def compare_repository(expected_scope: Repository, received_scope: Repository):
     return MatchingType.MISMATCH if expected_scope.repo_id != received_scope.repo_id else MatchingType.MATCH
 
+def compare_member_lifecycle(expected_scope: MemberLifecycle, received_scope: MemberLifecycle):
+    expected_action = expected_scope.action
+    received_action = received_scope.action
+    if (expected_action is not None and
+            expected_action is not MemberAction.ALL and
+            received_action is not MemberAction.ALL and
+            expected_action != received_action):
+        return MatchingType.MISMATCH
+    else:
+        return MatchingType.MATCH
+
 def compare_patch(expected_scope: Patch, received_scope: Patch):
     expected_action = expected_scope.action
     received_action = received_scope.action
@@ -63,7 +79,7 @@ def compare_patch(expected_scope: Patch, received_scope: Patch):
         return compare_scopes(expected_scope.activity, received_scope.activity)
 
     for label in expected_elem.labels:
-        if label not in received_elem.labels:
+        if label.name not in received_elem.labels:
             return MatchingType.MISMATCH
 
     return compare_scopes(expected_scope.activity, received_scope.activity)

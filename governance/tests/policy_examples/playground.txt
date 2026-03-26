@@ -48,7 +48,7 @@ Scopes:
                 }
         }
 Participants:
-    Roles : Maintainers, Reviewers
+    Roles : Maintainers, Reviewers, no-one
     Individuals : (Agent) besser-bot { role: Reviewers },
     gwendal-jouneaux { role: Reviewers, Maintainers },
     ademait { role: Reviewers, Maintainers },
@@ -101,17 +101,18 @@ ComposedPolicy TriageFeatureRequest {
             DecisionType as BooleanDecision
             Participant list : Maintainers, Reviewers
             Conditions :
-                Deadline : 10 days
+                Deadline : 1 days
                 LabelCondition pre include : triage
-                LabelCondition post include : accepted
+                LabelCondition post : request-accepted
         }
+
         LazyConsensusPolicy DenyFeatureRequest {
             DecisionType as BooleanDecision
-            Participant list : Maintainers, Reviewers
+            Participant list : no-one
             Conditions :
                 Deadline : 0 days
                 LabelCondition pre include : triage
-                LabelCondition post include : denied
+                LabelCondition post : request-denied
         }
     }
 }
@@ -122,7 +123,7 @@ ConsensusPolicy promoteMaintainer {
     DecisionType as StringList : Maintainers
     Participant list : Maintainers
     Conditions :
-        Deadline : 10 days
+        Deadline : 1 days
         LabelCondition pre include : promote
 }
 

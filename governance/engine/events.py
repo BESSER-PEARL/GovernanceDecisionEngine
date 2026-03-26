@@ -6,7 +6,7 @@ from besser.agent.library.transition.events.github_webhooks_events import PullRe
 from besser.agent.library.transition.events.gitlab_webhooks_events import GitLabEvent
 
 from metamodel import SinglePolicy, Scope, Task, StatusEnum, Activity
-from utils.chp_extension import Patch, PullRequest, PatchAction, Repository
+from utils.chp_extension import Patch, PullRequest, PatchAction, Repository, Issue
 from besser.agent.exceptions.logger import logger
 
 
@@ -20,6 +20,14 @@ class DeadlineEvent(Event):
         self._collab = deadline_collab
         self._policy: SinglePolicy = deadline_policy
         self._timestamp: float = deadline_timestamp
+
+    @property
+    def collab(self):
+        return self._collab
+
+    @property
+    def policy(self):
+        return self._policy
 
     def is_matching(self, event: 'Event') -> bool:
         return isinstance(event, DeadlineEvent) and datetime.now().timestamp() > event._timestamp
@@ -100,19 +108,46 @@ class CollaborationProposalEvent(EngineEvent):
         self._PR_payload = None
         self._labels = set()
         self._platform = None
+        self._scope = None
 
     @classmethod
     def from_github_event(cls, event: GitHubEvent, platform):
         the_event = cls(payload=event.payload)
-        the_event._id = event.payload["pull_request"]["id"]
-        the_event._creator = event.payload["pull_request"]["user"]["login"]
-        the_event._rationale = event.payload["pull_request"]["title"]
+
+        if event.name == 'issuesopened':
+            type = "issue"
+            title = "Issue "
+            pr = Issue(title, the_event._labels)
+        else:
+            type = "pull_request"
+            title = "Pull Request "
+            pr = PullRequest(title, the_event._labels)
+
+        the_event._id = event.payload[type]["id"]
+        the_event._creator = event.payload[type]["user"]["login"]
+        the_event._rationale = event.payload[type]["title"]
         the_event._repoID = event.payload["repository"]["full_name"]
-        the_event._PR_payload = event.payload["pull_request"]
+        the_event._PR_payload = event.payload[type]
         the_event._platform = platform
-        labels_payload = event.payload["pull_request"]["labels"]
-        for label in labels_payload:
-            the_event._labels.add(label["name"])
+        title += f"#{the_event.id} of {the_event._repoID}"
+
+        pr.payload = the_event._PR_payload
+        scope = Patch(title, StatusEnum.ACCEPTED, PatchAction.ALL, pr)
+        scope.activity = Activity("", StatusEnum.ACCEPTED)
+        scope.activity.tasks = {scope}
+        scope.activity.project = Repository("Repository " + the_event._repoID, StatusEnum.ACCEPTED, the_event._repoID)
+        scope.activity.project.activities = {scope.activity}
+        the_event._scope = scope
+
+        # This part account for the delay in the initialization of PR labels
+        from time import sleep
+        sleep(0.5)
+        user_repo = the_event._repoID.split('/')
+        pr = platform.get_issue(user_repo[0], user_repo[1], the_event._PR_payload["number"])
+        labels_names = {label["name"] for label in pr.labels}
+
+        for label in labels_names:
+            the_event._labels.add(label)
         return the_event
 
     @classmethod
@@ -144,17 +179,7 @@ class CollaborationProposalEvent(EngineEvent):
 
     @property
     def scope(self):
-        title = f"Pull Request #{self.id} of {self._repoID}"
-        pr = PullRequest(title, self._labels)
-        pr.payload = self._PR_payload
-        scope = Patch(title, StatusEnum.ACCEPTED, PatchAction.ALL, pr)
-
-
-        scope.activity = Activity("", StatusEnum.ACCEPTED)
-        scope.activity.tasks = {scope}
-        scope.activity.project = Repository("Repository "+self._repoID, StatusEnum.ACCEPTED, self._repoID)
-        scope.activity.project.activities = {scope.activity}
-        return scope
+        return self._scope
 
 
 class VoteEvent(EngineEvent):
@@ -172,7 +197,7 @@ class VoteEvent(EngineEvent):
         the_event._user_login = event.payload["review"]["user"]["login"]
         the_event._pull_request_id = event.payload["pull_request"]["id"]
         the_event._role = event.payload["review"]["author_association"]
-        the_event._agreement = event.payload["review"]["state"] == "APPROVED"
+        the_event._agreement = event.payload["review"]["state"] == "APPROVED" or event.payload["review"]["state"] == "approved"
         the_event._rationale = event.payload["review"]["body"]
         return the_event
 

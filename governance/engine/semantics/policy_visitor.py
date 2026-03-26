@@ -79,6 +79,8 @@ def visitVotingPolicy(collab: 'Collaboration', rule:VotingPolicy) -> bool:
         vote_count += vote._vote_value if vote._agreement else 0
         total_count += vote._vote_value
     ratio = rule.ratio if rule.ratio is not None else 0.5
+    if total_count == 0:
+        return False
     percentage = vote_count / total_count
     return percentage > ratio or percentage == 1.0
 
@@ -92,6 +94,8 @@ def visitMajorityPolicy(collab: 'Collaboration', rule:MajorityPolicy) -> bool:
         vote_count += vote._vote_value if vote._agreement else 0
         total_count += vote._vote_value
     ratio = rule.ratio if rule.ratio is not None else 0.5
+    if total_count == 0:
+        return False
     percentage = vote_count / total_count
     return percentage > ratio or percentage == 1.0
 
@@ -136,6 +140,9 @@ def visitComposedPolicy(collab: 'Collaboration', rule:ComposedPolicy) -> bool | 
     for phase in rule.phases:
         if phase in collab.ballot_boxes:
             box = collab.ballot_boxes[phase]
+            if len(box) == 0:
+                finished = False
+                continue
             vote = box.pop()
             box.add(vote)
             if vote._part_of is not None:
@@ -218,7 +225,7 @@ def visitCheckCiCd(collab: 'Collaboration', rule: Policy, cond: CheckCiCd) -> bo
 
 def visitLabelCondition(collab: 'Collaboration', rule: Policy, cond: LabelCondition) -> bool:
     gh_platform: GitHubPlatform = collab._platform
-    pr_id = collab.scope.element.payload["id"]
+    pr_id = collab.scope.element.payload["number"]
     project: Repository = collab.scope
     if isinstance(collab.scope, Activity):
         project = collab.scope.project
