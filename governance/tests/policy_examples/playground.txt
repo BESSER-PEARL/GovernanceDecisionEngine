@@ -50,7 +50,7 @@ Scopes:
 Participants:
     Roles : Maintainers, Reviewers, no-one
     Individuals : (Agent) besser-bot { role: Reviewers },
-    gwendal-jouneaux { role: Reviewers, Maintainers },
+    gwendal-jouneaux { role : Reviewers, Maintainers },
     ademait { role: Reviewers, Maintainers },
     jcabot { role: Reviewers, Maintainers }
 
@@ -132,6 +132,6 @@ ConsensusPolicy demoteMaintainer {
     DecisionType as StringList : Maintainers
     Participant list : Maintainers
     Conditions :
-        Deadline : 10 days
+        Deadline : 1 days
         LabelCondition pre include : demote
 }

@@ -98,7 +98,7 @@ def collab_bodybuilder(agent):
                                       collab_event.rationale,
                                       collab_event._platform)
 
-        applicable_policy = find_policy_for(session.get("policies"), collab)
+        applicable_policy, starting_policies = find_policy_for(session.get("policies"), collab)
 
         if applicable_policy is not None:
             starting_policies = find_starting_policies_in(applicable_policy, collab)

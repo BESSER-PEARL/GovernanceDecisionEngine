@@ -168,7 +168,11 @@ class Collaboration:
                         if role_assignement is not None:
                             individual.enacted_roles.add(hasRole(individual.name, role_assignement.role, individual, self.scope))
                 if isinstance(individual._base_individual, metamodel.Agent):
-                    vote._vote_value = vote._vote_value * individual._base_individual.confidence
+                    vote._vote_value = vote._vote_value * (
+                        0.5 * individual._base_individual.confidence +
+                        0.3 * individual._base_individual.autonomy_level +
+                        0.2 * individual._base_individual.explainability
+                    )
 
                 if valid_vote:
                     box: set[Vote] = self._ballot_boxes[policy]

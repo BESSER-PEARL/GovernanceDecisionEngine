@@ -1,7 +1,6 @@
+import re
 from datetime import datetime
 from typing import TYPE_CHECKING
-
-from besser.agent.core.agent import Agent
 
 from governance.engine.semantics.scope_comparator import compare_scopes, MatchingType
 
@@ -9,7 +8,8 @@ if TYPE_CHECKING:
     from governance.engine.semantics.runtime_metamodel import Collaboration, Vote
 from governance.engine.events import DeadlineEvent, DecideEvent, VoteEvent
 from metamodel import Policy, ComposedPolicy, Role, Deadline, Project, Activity, Task, SinglePolicy, EvaluationMode, \
-    hasRole, Individual
+    hasRole, Individual, Human, Agent
+
 
 def get_reaction_for(agent, collab: 'Collaboration'):
     reactions = collab._platform.getitem(
@@ -24,6 +24,28 @@ def get_reaction_for(agent, collab: 'Collaboration'):
         evt._user_login = reaction["user"]["login"]
         evt._rationale = ""
         agent.receive_event(evt)
+
+def serialize_individual(indiv: Individual, roles: set[Role]):
+    indiv_roles = []
+    real_indiv = None
+    for role in roles:
+        for i in role.individuals:
+            if i.name == indiv.name:
+                indiv_roles.append(role)
+                real_indiv = i
+    roles = ", ".join({role.name for role in indiv_roles})
+    role_section = "" if len(indiv_roles) == 0 else f", role : {roles}"
+    if real_indiv is not None and isinstance(real_indiv, Agent):
+        return f"(Agent) {real_indiv.name} {{ voteValue : {real_indiv.vote_value}, confidence : {real_indiv.confidence}, autonomy level : {real_indiv.autonomy_level}, explainability : {real_indiv.explainability}{role_section} }}"
+
+    if real_indiv is not None and isinstance(real_indiv, Human):
+        profile = "" if real_indiv.profile is None else f", profile : {real_indiv.profile.name}"
+        return f"{real_indiv.name} {{ voteValue : {real_indiv.vote_value}{profile}{role_section} }}"
+    return f"{indiv.name} {{ voteValue : {indiv.vote_value}{role_section} }}"
+
+def update_individual(text: str, indiv: Individual, roles: set[Role]):
+    regex = re.compile(rf"(\(Agent\)\s*)?{indiv.name}\s*({{[^}}]*}})?")
+    return re.sub(regex, serialize_individual(indiv, roles), text, count=1)
 
 def get_all_roles(policy):
     roles: set[Role]= set()
@@ -52,18 +74,31 @@ def get_all_individuals(policy):
     return individuals
 
 def find_policy_for(policies: set[Policy], collab: 'Collaboration'):
-    matching_policy: Policy = None
+    matching_policies: list[Policy] = []
+    include_policies: list[Policy] = []
     for policy in policies:
         expected_scope = policy.scope
         received_scope = collab.scope
         matching = compare_scopes(expected_scope, received_scope)
+        if matching == MatchingType.MISMATCH:
+            continue
         if matching == MatchingType.MATCH:
-            return policy
+                matching_policies.append(policy)
         elif matching == MatchingType.INCLUDE:
-            if (matching_policy is None or
-                    (isinstance(expected_scope, Activity) and isinstance(matching_policy.scope, Project))):
-                matching_policy = policy
-    return matching_policy
+            if isinstance(expected_scope, Activity):
+                include_policies.insert(0, policy)
+            else:
+                include_policies.append(policy)
+    for match in matching_policies:
+        starting = find_starting_policies_in(match, collab)
+        if len(starting) > 0:
+            return match, starting
+    for included in include_policies:
+        starting = find_starting_policies_in(included, collab)
+        if len(starting) > 0:
+            return included, starting
+    return None
+
 
 def find_starting_policies_in(policy: Policy, collab: 'Collaboration') -> list[Policy]:
     from governance.engine.semantics.policy_visitor import visitCondition

@@ -1,7 +1,10 @@
+import os
 import re
+import subprocess
 
+from governance.engine.semantics.helpers import update_individual
 from governance.engine.semantics.runtime_metamodel import Collaboration
-from metamodel import SinglePolicy, StringList
+from metamodel import SinglePolicy, StringList, Individual, Role
 from utils.chp_extension import Patch, PatchAction, PullRequest, MemberLifecycle, MemberAction
 
 
@@ -48,17 +51,19 @@ def promote(collab: Collaboration, policy: SinglePolicy):
         if indiv.name == dyn_indiv.name:
             return
 
-    dyn_indiv._base_individual.roles.add(role)
     role.individuals.add(dyn_indiv._base_individual)
+    update_indiv_in_gov_file(dyn_indiv._base_individual, collab._interaction._roles.values())
 
 
 def demote(collab: Collaboration, policy: SinglePolicy):
-    regex = re.compile("@([A-Za-z0-9_][A-Za-z0-9_\-]*)")
-    dyn_indiv = collab._interaction.get_or_create_dynamic_individual(
-        regex.match(collab.scope.element.payload["body"]).group(1))
+    regex = re.compile("@([A-Za-z0-9_][A-Za-z0-9_-]*)")
+    issue_body = collab.scope.element.payload["body"]
+    matchname = regex.search(issue_body)
+    username = matchname.group(1)
+    dyn_indiv = collab._interaction.get_or_create_dynamic_individual(username)
     the_role = None
     if isinstance(policy.decision_type, StringList):
-        the_role = next(policy.decision_type.options())
+        the_role = next(iter(policy.decision_type.options))
 
     if the_role is None:
         return
@@ -67,8 +72,27 @@ def demote(collab: Collaboration, policy: SinglePolicy):
     if role is None:
         return
 
+    real_indiv = None
     for indiv in role.individuals:
         if indiv.name == dyn_indiv.name:
-            dyn_indiv._base_individual.roles.remove(role)
-            role.individuals.remove(dyn_indiv._base_individual)
+            real_indiv = indiv
+    role.individuals.remove(real_indiv)
+    update_indiv_in_gov_file(real_indiv, collab._interaction._roles.values())
+
+def update_indiv_in_gov_file(indiv: Individual, roles: set[Role]):
+    dir, file_name = os.path.split(os.environ["PLAYGROUND_POLICY"])
+    subprocess.run(["git", "pull"], cwd=dir)
+    with open(os.environ["PLAYGROUND_POLICY"], "r") as file:
+        data = file.read()
+
+    new_version = update_individual(data, indiv, roles)
+
+    with open(os.environ["PLAYGROUND_POLICY"], "w") as file:
+        file.write(new_version)
+
+    subprocess.run(["git", "add", file_name], cwd=dir)
+    subprocess.run(["git", "commit", "-m", "Update roles in governance"], cwd=dir)
+    subprocess.run(["git", "push"], cwd=dir)
+
+
 
