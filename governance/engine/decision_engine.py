@@ -12,16 +12,16 @@ from besser.agent.library.transition.events.github_webhooks_events import PullRe
 from besser.agent.library.transition.events.gitlab_webhooks_events import MergeRequestApproved, GitLabEvent, \
     MergeRequestOpened, MergeRequestUnapproved, MergeRequestApproval, MergeRequestUpdated
 
-from governance.engine.events import DeadlineEvent, VoteEvent, CollaborationProposalEvent, UserRegistrationEvent, \
+from events import DeadlineEvent, VoteEvent, CollaborationProposalEvent, UserRegistrationEvent, \
     UpdatePolicyEvent, DecideEvent
-from governance.engine.parsing import parse_text
-from governance.engine.semantics.helpers import get_all_individuals, get_all_roles
-from governance.engine.semantics.runtime_metamodel import Interaction
-from governance.engine.state_bodies import individual_body, vote_body, collab_bodybuilder, \
+from parsing import parse_text
+from semantics.helpers import get_all_individuals, get_all_roles
+from semantics.runtime_metamodel import Interaction
+from state_bodies import individual_body, vote_body, collab_bodybuilder, \
     decide_bodybuilder, gh_webhooks_bodybuilder, update_policy_body, init_body, read_policy_bodybuilder, \
     gl_webhooks_bodybuilder, deadline_body
-from governance.engine.testing.hooks import add_testing_hooks
-from governance.engine.testing.platform_mock import PlatformMock
+from testing.hooks import add_testing_hooks
+from testing.platform_mock import PlatformMock
 
 logger.setLevel(logging.INFO)
 

@@ -4,7 +4,7 @@ from besser.agent.core.agent import Agent
 from nltk.sem.relextract import roles_demo
 
 import metamodel
-from governance.engine.semantics.policy_visitor import visitPolicy, visitComposedPolicy, visitCondition, \
+from policy_visitor import visitPolicy, visitComposedPolicy, visitCondition, \
     check_conditions, isDecidablePolicy
 from metamodel import Role, Policy, Scope, Individual, StatusEnum, ComposedPolicy, hasRole, SinglePolicy, EvaluationMode
 

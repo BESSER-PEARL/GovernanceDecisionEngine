@@ -9,14 +9,14 @@ from besser.agent.exceptions.logger import logger
 from besser.agent.library.transition.events.gitlab_webhooks_events import GitLabEvent
 from gidgethub.aiohttp import GitHubAPI
 
-from governance.engine.parsing import parse_text
-from governance.engine.semantics.actions import resolve_action
-from governance.engine.semantics.runtime_metamodel import Interaction
-from governance.engine.events import DeadlineEvent, VoteEvent, CollaborationProposalEvent, UserRegistrationEvent, \
+from parsing import parse_text
+from semantics.actions import resolve_action
+from semantics.runtime_metamodel import Interaction
+from events import DeadlineEvent, VoteEvent, CollaborationProposalEvent, UserRegistrationEvent, \
     UpdatePolicyEvent, DecideEvent
-from governance.engine.semantics.helpers import find_policies_in, find_starting_policies_in, start_policies, \
+from semantics.helpers import find_policies_in, find_starting_policies_in, start_policies, \
     find_policy_for, get_all_individuals, get_all_roles, get_reaction_for
-from governance.engine.testing.helpers import start_testing_policies, start_playground_policies
+from testing.helpers import start_testing_policies, start_playground_policies
 from metamodel import ComposedPolicy, Individual, BooleanDecision
 from utils.chp_extension import Patch, PullRequest, PatchAction, Issue
 

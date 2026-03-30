@@ -2,8 +2,8 @@ import os
 import re
 import subprocess
 
-from governance.engine.semantics.helpers import update_individual
-from governance.engine.semantics.runtime_metamodel import Collaboration
+from helpers import update_individual
+from runtime_metamodel import Collaboration
 from metamodel import SinglePolicy, StringList, Individual, Role
 from utils.chp_extension import Patch, PatchAction, PullRequest, MemberLifecycle, MemberAction
 
