@@ -152,29 +152,33 @@ class Collaboration:
                 valid_vote = False
                 roles = {part for part in policy.participants if isinstance(part, Role)}
                 individuals = {part for part in policy.participants if not isinstance(part, Role)}
+                the_indiv = None
                 for role in roles:
                     for registered in role.individuals:
                         if individual.name == registered.name:
+                            the_indiv = registered
                             valid_vote = True
                             if role.vote_value > vote._vote_value:
                                 vote._vote_value = role.vote_value
                             individual.enacted_roles.add(hasRole(individual.name, role, individual, self.scope))
                 for part_indiv in individuals:
                     if individual.name == part_indiv.name:
+                        the_indiv = part_indiv
                         valid_vote = True
                         if part_indiv.vote_value > vote._vote_value:
                             vote._vote_value = part_indiv.vote_value
                         role_assignement = part_indiv.role_assignement
                         if role_assignement is not None:
                             individual.enacted_roles.add(hasRole(individual.name, role_assignement.role, individual, self.scope))
-                if isinstance(individual._base_individual, metamodel.Agent):
-                    vote._vote_value = vote._vote_value * (
-                        0.5 * individual._base_individual.confidence +
-                        0.3 * individual._base_individual.autonomy_level +
-                        0.2 * individual._base_individual.explainability
-                    )
 
                 if valid_vote:
+                    if isinstance(the_indiv, metamodel.Agent):
+                        vote._vote_value = (
+                                0.5 * the_indiv.confidence +
+                                0.3 * the_indiv.autonomy_level +
+                                0.2 * the_indiv.explainability
+                        )
+
                     box: set[Vote] = self._ballot_boxes[policy]
                     add_vote = False
                     if len(box) > 0:

@@ -12,16 +12,16 @@ from besser.agent.library.transition.events.github_webhooks_events import PullRe
 from besser.agent.library.transition.events.gitlab_webhooks_events import MergeRequestApproved, GitLabEvent, \
     MergeRequestOpened, MergeRequestUnapproved, MergeRequestApproval, MergeRequestUpdated
 
-from events import DeadlineEvent, VoteEvent, CollaborationProposalEvent, UserRegistrationEvent, \
+from governance.engine.events import DeadlineEvent, VoteEvent, CollaborationProposalEvent, UserRegistrationEvent, \
     UpdatePolicyEvent, DecideEvent
 from governance.engine.parsing import parse_text
 from governance.engine.semantics.helpers import get_all_individuals, get_all_roles
-from semantics.runtime_metamodel import Interaction
-from state_bodies import individual_body, vote_body, collab_bodybuilder, \
+from governance.engine.semantics.runtime_metamodel import Interaction
+from governance.engine.state_bodies import individual_body, vote_body, collab_bodybuilder, \
     decide_bodybuilder, gh_webhooks_bodybuilder, update_policy_body, init_body, read_policy_bodybuilder, \
     gl_webhooks_bodybuilder, deadline_body
-from testing.hooks import add_testing_hooks
-from testing.platform_mock import PlatformMock
+from governance.engine.testing.hooks import add_testing_hooks
+from governance.engine.testing.platform_mock import PlatformMock
 
 logger.setLevel(logging.INFO)
 
@@ -29,7 +29,7 @@ def setup(testing: bool, playground: bool, init_policy_path: str) -> Agent:
     agent = Agent('decision_engine')
     agent.load_properties('config.yaml')
 
-    if not testing:
+    if not testing and not playground:
         websocket_platform = agent.use_websocket_platform(use_ui=(not playground))
     gh_platform = agent.use_github_platform()
     # gl_platform = agent.use_gitlab_platform()
@@ -74,9 +74,9 @@ def setup(testing: bool, playground: bool, init_policy_path: str) -> Agent:
         with open(init_policy_path, "r") as file:
             data = file.read()
             def init_playground(session: Session):
-                session.set("policies", None)
                 session.set("interactions", Interaction())
                 model = parse_text(data)
+                session.set("policies", model)
                 interact = session.get("interactions")
 
                 individuals = set()
