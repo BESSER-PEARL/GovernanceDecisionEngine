@@ -14,6 +14,8 @@ from besser.agent.library.transition.events.gitlab_webhooks_events import MergeR
 
 from events import DeadlineEvent, VoteEvent, CollaborationProposalEvent, UserRegistrationEvent, \
     UpdatePolicyEvent, DecideEvent
+from governance.engine.parsing import parse_text
+from governance.engine.semantics.helpers import get_all_individuals, get_all_roles
 from semantics.runtime_metamodel import Interaction
 from state_bodies import individual_body, vote_body, collab_bodybuilder, \
     decide_bodybuilder, gh_webhooks_bodybuilder, update_policy_body, init_body, read_policy_bodybuilder, \
@@ -74,7 +76,17 @@ def setup(testing: bool, playground: bool, init_policy_path: str) -> Agent:
             def init_playground(session: Session):
                 session.set("policies", None)
                 session.set("interactions", Interaction())
-                agent.receive_event(UpdatePolicyEvent(data))
+                model = parse_text(data)
+                interact = session.get("interactions")
+
+                individuals = set()
+                for policy in model:
+                    individuals = individuals.union(get_all_individuals(policy))
+                roles = set()
+                for policy in model:
+                    roles = roles.union(get_all_roles(policy))
+                interact.register_individuals(individuals)
+                interact.register_roles(roles)
             init.set_body(init_playground)
 
     # TRANSITIONS DEFINITION
