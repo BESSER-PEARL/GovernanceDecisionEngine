@@ -5,7 +5,7 @@ import time
 import requests
 import hmac
 
-from assert_builder import AssertType, DecisionAssertBuilder
+from governance.engine.testing.framework.assert_builder import AssertType, DecisionAssertBuilder
 
 
 class EngineTesting(object):

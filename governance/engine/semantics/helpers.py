@@ -2,11 +2,11 @@ import re
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from scope_comparator import compare_scopes, MatchingType
+from governance.engine.semantics.scope_comparator import compare_scopes, MatchingType
 
 if TYPE_CHECKING:
-    from runtime_metamodel import Collaboration, Vote
-from ..events import DeadlineEvent, DecideEvent, VoteEvent
+    from governance.engine.semantics.runtime_metamodel import Collaboration, Vote
+from governance.engine.events import DeadlineEvent, DecideEvent, VoteEvent
 from metamodel import Policy, ComposedPolicy, Role, Deadline, Project, Activity, Task, SinglePolicy, EvaluationMode, \
     hasRole, Individual, Human, Agent
 
