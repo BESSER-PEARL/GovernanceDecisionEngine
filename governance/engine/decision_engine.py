@@ -76,6 +76,8 @@ def setup(testing: bool, playground: bool, init_policy_path: str) -> Agent:
             def init_playground(session: Session):
                 session.set("interactions", Interaction())
                 model = parse_text(data)
+                for policy in model:
+                    print(policy)
                 session.set("policies", model)
                 interact = session.get("interactions")
 

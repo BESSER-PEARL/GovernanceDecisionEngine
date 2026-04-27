@@ -97,7 +97,7 @@ def find_policy_for(policies: set[Policy], collab: 'Collaboration'):
         starting = find_starting_policies_in(included, collab)
         if len(starting) > 0:
             return included, starting
-    return None
+    return None, None
 
 
 def find_starting_policies_in(policy: Policy, collab: 'Collaboration') -> list[Policy]:
