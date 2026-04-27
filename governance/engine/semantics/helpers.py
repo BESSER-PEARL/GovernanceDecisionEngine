@@ -36,12 +36,12 @@ def serialize_individual(indiv: Individual, roles: set[Role]):
     roles = ", ".join({role.name for role in indiv_roles})
     role_section = "" if len(indiv_roles) == 0 else f", role : {roles}"
     if real_indiv is not None and isinstance(real_indiv, Agent):
-        return f"(Agent) {real_indiv.name} {{ voteValue : {real_indiv.vote_value}, confidence : {real_indiv.confidence}, autonomy level : {real_indiv.autonomy_level}, explainability : {real_indiv.explainability}{role_section} }}"
+        return f"(Agent) {real_indiv.name} {{ vote value : {real_indiv.vote_value}, confidence : {real_indiv.confidence}, autonomy level : {real_indiv.autonomy_level}, explainability : {real_indiv.explainability}{role_section} }}"
 
     if real_indiv is not None and isinstance(real_indiv, Human):
         profile = "" if real_indiv.profile is None else f", profile : {real_indiv.profile.name}"
-        return f"{real_indiv.name} {{ voteValue : {real_indiv.vote_value}{profile}{role_section} }}"
-    return f"{indiv.name} {{ voteValue : {indiv.vote_value}{role_section} }}"
+        return f"{real_indiv.name} {{ vote value : {real_indiv.vote_value}{profile}{role_section} }}"
+    return f"{indiv.name} {{ vote value : {indiv.vote_value}{role_section} }}"
 
 def update_individual(text: str, indiv: Individual, roles: set[Role]):
     regex = re.compile(rf"(\(Agent\)\s*)?{indiv.name}\s*({{[^}}]*}})?")
