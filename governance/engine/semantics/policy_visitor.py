@@ -263,8 +263,8 @@ def isDecidablePolicy(collab: 'Collaboration', rule: Policy) -> bool:
 
 
 def isDecidableConsensusPolicy(collab: 'Collaboration', rule:ConsensusPolicy) -> bool:
-    if not check_conditions(collab, rule, rule.conditions):
-        return False
+    # if not check_conditions(collab, rule, rule.conditions):
+    #     return False
 
     potential_participant = set()
     for p in rule.participants:
@@ -287,8 +287,8 @@ def isDecidableConsensusPolicy(collab: 'Collaboration', rule:ConsensusPolicy) ->
     return vote_count / len(potential_participant) == 1.0
 
 def isDecidableLazyConsensusPolicy(collab: 'Collaboration', rule:LazyConsensusPolicy) -> bool:
-    if not check_conditions(collab, rule, rule.conditions):
-        return False
+    # if not check_conditions(collab, rule, rule.conditions):
+    #     return False
 
     potential_participant = set()
     for p in rule.participants:
@@ -311,8 +311,8 @@ def isDecidableLazyConsensusPolicy(collab: 'Collaboration', rule:LazyConsensusPo
     return vote_count / len(potential_participant) == 1.0
 
 def isDecidableVotingPolicy(collab: 'Collaboration', rule:VotingPolicy) -> bool:
-    if not check_conditions(collab, rule, rule.conditions):
-        return False
+    # if not check_conditions(collab, rule, rule.conditions):
+    #     return False
 
     potential_participant = set()
     for p in rule.participants:
@@ -348,8 +348,8 @@ def isDecidableVotingPolicy(collab: 'Collaboration', rule:VotingPolicy) -> bool:
                 vote_count / (total_count) == 1.0)  ## edge-case : if everyone vote true when ratio is 1
 
 def isDecidableMajorityPolicy(collab: 'Collaboration', rule:MajorityPolicy) -> bool:
-    if not check_conditions(collab, rule, rule.conditions):
-        return False
+    # if not check_conditions(collab, rule, rule.conditions):
+    #     return False
 
     potential_participant = set()
     for p in rule.participants:
@@ -385,8 +385,8 @@ def isDecidableMajorityPolicy(collab: 'Collaboration', rule:MajorityPolicy) -> b
             vote_count / (total_count) == 1.0)  ## edge-case : if everyone vote true when ratio is 1
 
 def isDecidableAbsoluteMajorityPolicy(collab: 'Collaboration', rule:AbsoluteMajorityPolicy) -> bool:
-    if not check_conditions(collab, rule, rule.conditions):
-        return False
+    # if not check_conditions(collab, rule, rule.conditions):
+    #     return False
 
     potential_participant = set()
     for p in rule.participants:
@@ -414,8 +414,8 @@ def isDecidableAbsoluteMajorityPolicy(collab: 'Collaboration', rule:AbsoluteMajo
             vote_count / (total_count + abstention) == 1.0) ## edge-case : if everyone vote true when ratio is 1
 
 def isDecidableLeaderDrivenPolicy(collab: 'Collaboration', rule:LeaderDrivenPolicy) -> bool:
-    if not check_conditions(collab, rule, rule.conditions):
-        return False
+    # if not check_conditions(collab, rule, rule.conditions):
+    #     return False
 
     if rule.default in collab.ballot_boxes:
         return isDecidablePolicy(collab, rule.default)
