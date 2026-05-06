@@ -30,6 +30,24 @@ def merge_PR(collab: Collaboration):
                 "commit_message": "Merge of a pull request validated by the decision engine"
             })
 
+def close_PR(collab: Collaboration):
+    pr = collab.scope.element
+    if isinstance(pr, PullRequest):
+        collab._platform.patch(
+            f"/repos/{collab.scope.activity.project.repo_id}/pulls/{pr.payload["number"]}",
+            data={
+                "state": "closed"
+            })
+
+def close_issue(collab: Collaboration):
+    pr = collab.scope.element
+    if isinstance(pr, PullRequest):
+        collab._platform.patch(
+            f"/repos/{collab.scope.activity.project.repo_id}/issues/{pr.payload["number"]}",
+            data={
+                "state": "closed"
+            })
+
 def promote(collab: Collaboration, policy: SinglePolicy):
     regex = re.compile("@([A-Za-z0-9_][A-Za-z0-9_-]*)")
     issue_body = collab.scope.element.payload["body"]

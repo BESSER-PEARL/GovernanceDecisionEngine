@@ -10,7 +10,7 @@ from besser.agent.library.transition.events.gitlab_webhooks_events import GitLab
 from gidgethub.aiohttp import GitHubAPI
 
 from governance.engine.parsing import parse_text
-from governance.engine.semantics.actions import resolve_action
+from governance.engine.semantics.actions import resolve_action, close_PR, close_issue
 from governance.engine.semantics.runtime_metamodel import Interaction
 from governance.engine.events import DeadlineEvent, VoteEvent, CollaborationProposalEvent, UserRegistrationEvent, \
     UpdatePolicyEvent, DecideEvent
@@ -146,4 +146,12 @@ def decide_bodybuilder(agent):
             start_function(agent, to_start, decide_event.collab)
         elif result._accepted:
             resolve_action(decide_event.collab, decide_event.policy)
+        elif not result._accepted:
+            try:
+                if isinstance(decide_event.policy.scope.element, Issue):
+                    close_issue(decide_event.collab)
+                if isinstance(decide_event.policy.scope.element, PullRequest):
+                    close_PR(decide_event.collab)
+            except:
+                pass
     return decide_body
