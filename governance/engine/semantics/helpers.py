@@ -7,13 +7,13 @@ from governance.engine.semantics.scope_comparator import compare_scopes, Matchin
 if TYPE_CHECKING:
     from governance.engine.semantics.runtime_metamodel import Collaboration, Vote
 from governance.engine.events import DeadlineEvent, DecideEvent, VoteEvent
-from metamodel import Policy, ComposedPolicy, Role, Deadline, Project, Activity, Task, SinglePolicy, EvaluationMode, \
+from governancedsl.metamodel import Policy, ComposedPolicy, Role, Deadline, Project, Activity, Task, SinglePolicy, EvaluationMode, \
     hasRole, Individual, Human, Agent
 
 
 def get_reaction_for(agent, collab: 'Collaboration'):
     reactions = collab._platform.getitem(
-        f"/repos/{collab.scope.activity.project.repo_id}/issues/{collab.scope.element.payload["number"]}/reactions"
+        f"/repos/{collab.scope.activity.project.repo_id}/issues/{collab.scope.element.payload['number']}/reactions"
     )
     for reaction in reactions:
         if reaction["content"] != "+1" and reaction["content"] != "-1":

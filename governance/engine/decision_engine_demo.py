@@ -2,10 +2,10 @@ import argparse
 import logging
 import os
 
-from besser.agent.core.agent import Agent
-from besser.agent.exceptions.logger import logger
-from besser.agent.library.transition.events.base_events import ReceiveFileEvent
-from besser.agent.library.transition.events.github_webhooks_events import PullRequestAssigned, GitHubEvent, \
+from baf.core.agent import Agent
+from baf.exceptions.logger import logger
+from baf.library.transition.events.base_events import ReceiveFileEvent
+from baf.library.transition.events.github_webhooks_events import PullRequestAssigned, GitHubEvent, \
     PullRequestOpened
 
 from governance.engine.events import DeadlineEvent, VoteEvent, CollaborationProposalEvent, UserRegistrationEvent, \

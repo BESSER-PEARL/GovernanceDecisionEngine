@@ -1,13 +1,13 @@
 from datetime import datetime
 
-from besser.agent.core.transition.event import Event
-from besser.agent.library.transition.events.github_webhooks_events import PullRequestOpened, GitHubEvent, \
+from baf.core.transition.event import Event
+from baf.library.transition.events.github_webhooks_events import PullRequestOpened, GitHubEvent, \
     PullRequestAssigned
-from besser.agent.library.transition.events.gitlab_webhooks_events import GitLabEvent
+from baf.library.transition.events.gitlab_webhooks_events import GitLabEvent
 
-from metamodel import SinglePolicy, Scope, Task, StatusEnum, Activity
-from utils.chp_extension import Patch, PullRequest, PatchAction, Repository, Issue
-from besser.agent.exceptions.logger import logger
+from governancedsl.metamodel import SinglePolicy, Scope, Task, StatusEnum, Activity
+from governancedsl.utils.chp_extension import Patch, PullRequest, PatchAction, Repository, Issue
+from baf.exceptions.logger import logger
 
 
 class DeadlineEvent(Event):

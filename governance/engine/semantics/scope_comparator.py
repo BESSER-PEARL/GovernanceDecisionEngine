@@ -1,7 +1,7 @@
 from enum import Enum
 
-from metamodel import Scope, Task, Project, Activity
-from utils.chp_extension import Patch, Repository, PatchAction, MemberLifecycle, MemberAction
+from governancedsl.metamodel import Scope, Task, Project, Activity
+from governancedsl.utils.chp_extension import Patch, Repository, PatchAction, MemberLifecycle, MemberAction
 
 
 class MatchingType(Enum):

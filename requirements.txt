@@ -1,2 +1,3 @@
 besser-agentic-framework
+governancedsl==0.1.1
 pytest~=8.4.2

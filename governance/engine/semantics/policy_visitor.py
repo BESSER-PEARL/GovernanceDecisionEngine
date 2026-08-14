@@ -1,15 +1,15 @@
 from typing import TYPE_CHECKING
 
-from besser.agent.core.agent import Agent
-from besser.agent.platforms.github.github_platform import GitHubPlatform
+from baf.core.agent import Agent
+from baf.platforms.github.github_platform import GitHubPlatform
 
 from governance.engine.semantics.helpers import start_policies
-from utils.chp_extension import CheckCiCd, LabelCondition, Repository
+from governancedsl.utils.chp_extension import CheckCiCd, LabelCondition, Repository
 
 if TYPE_CHECKING:
     from governance.engine.semantics.runtime_metamodel import Collaboration
 
-from metamodel import Policy, ConsensusPolicy, LazyConsensusPolicy, VotingPolicy, MajorityPolicy, \
+from governancedsl.metamodel import Policy, ConsensusPolicy, LazyConsensusPolicy, VotingPolicy, MajorityPolicy, \
     AbsoluteMajorityPolicy, LeaderDrivenPolicy, ComposedPolicy, Condition, ParticipantExclusion, \
     MinimumParticipant, VetoRight, Role, Individual, EvaluationMode, Activity, Task, Deadline
 

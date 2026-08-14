@@ -1,0 +1,9 @@
+agent:
+  check_transitions:
+    delay: 0.01
+
+platforms:
+  github:
+    personal_token: "not-used-in-test"
+    webhook_token: "secret_test_webhook"
+    webhook_port: 8901

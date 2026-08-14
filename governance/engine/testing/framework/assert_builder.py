@@ -40,7 +40,7 @@ class DecisionEqualsAssertBuilder(DecisionAssertBuilder):
         with open(path, "r") as file:
             result = json.loads(file.read())
             if self._type == AssertType.ACCEPTANCE:
-                assert self._value == result["acceptance"], f"acceptance is '{result["acceptance"]}' not '{self._value}'"
+                assert self._value == result["acceptance"], f"acceptance is '{result['acceptance']}' not '{self._value}'"
             elif self._type == AssertType.VOTERS:
                 assert self._value == result["voters"]
             elif self._type == AssertType.VOTE_NUMBER:
@@ -65,7 +65,7 @@ class DecisionLessAssertBuilder(DecisionAssertBuilder):
         with open(path, "r") as file:
             result = json.loads(file.read())
             if self._type == AssertType.ACCEPTANCE:
-                assert self._value == result["acceptance"], f"acceptance is '{result["acceptance"]}' not '{self._value}'"
+                assert self._value == result["acceptance"], f"acceptance is '{result['acceptance']}' not '{self._value}'"
             elif self._type == AssertType.VOTERS:
                 assert result["voters"].issubset(self._value)
             elif self._type == AssertType.VOTE_NUMBER:
@@ -87,7 +87,7 @@ class DecisionMoreAssertBuilder(DecisionAssertBuilder):
         with open(path, "r") as file:
             result = json.loads(file.read())
             if self._type == AssertType.ACCEPTANCE:
-                assert self._value == result["acceptance"], f"acceptance is '{result["acceptance"]}' not '{self._value}'"
+                assert self._value == result["acceptance"], f"acceptance is '{result['acceptance']}' not '{self._value}'"
             elif self._type == AssertType.VOTERS:
                 assert result["voters"].issuperset(self._value)
             elif self._type == AssertType.VOTE_NUMBER:

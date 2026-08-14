@@ -1,5 +1,5 @@
-from besser.agent.platforms.github.github_objects import Issue
-from besser.agent.platforms.github.github_platform import GitHubPlatform
+from baf.platforms.github.github_objects import Issue
+from baf.platforms.github.github_platform import GitHubPlatform
 
 
 class PlatformMock(GitHubPlatform):

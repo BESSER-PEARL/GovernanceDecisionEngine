@@ -1,12 +1,12 @@
 import time
 
-from besser.agent.core.agent import Agent
+from baf.core.agent import Agent
 from nltk.sem.relextract import roles_demo
 
-import metamodel
+import governancedsl.metamodel as metamodel
 from governance.engine.semantics.policy_visitor import visitPolicy, visitComposedPolicy, visitCondition, \
     check_conditions, isDecidablePolicy
-from metamodel import Role, Policy, Scope, Individual, StatusEnum, ComposedPolicy, hasRole, SinglePolicy, EvaluationMode
+from governancedsl.metamodel import Role, Policy, Scope, Individual, StatusEnum, ComposedPolicy, hasRole, SinglePolicy, EvaluationMode
 
 
 # Modification for the Individual class

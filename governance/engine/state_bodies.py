@@ -2,11 +2,11 @@ import base64
 import os
 
 from aiohttp import ClientSession
-from besser.agent.core.session import Session
-from besser.agent.library.transition.events.base_events import ReceiveFileEvent
-from besser.agent.library.transition.events.github_webhooks_events import GitHubEvent
-from besser.agent.exceptions.logger import logger
-from besser.agent.library.transition.events.gitlab_webhooks_events import GitLabEvent
+from baf.core.session import Session
+from baf.library.transition.events.base_events import ReceiveFileEvent
+from baf.library.transition.events.github_webhooks_events import GitHubEvent
+from baf.exceptions.logger import logger
+from baf.library.transition.events.gitlab_webhooks_events import GitLabEvent
 from gidgethub.aiohttp import GitHubAPI
 
 from governance.engine.parsing import parse_text
@@ -17,8 +17,8 @@ from governance.engine.events import DeadlineEvent, VoteEvent, CollaborationProp
 from governance.engine.semantics.helpers import find_policies_in, find_starting_policies_in, start_policies, \
     find_policy_for, get_all_individuals, get_all_roles, get_reaction_for
 from governance.engine.testing.helpers import start_testing_policies, start_playground_policies
-from metamodel import ComposedPolicy, Individual, BooleanDecision
-from utils.chp_extension import Patch, PullRequest, PatchAction, Issue
+from governancedsl.metamodel import ComposedPolicy, Individual, BooleanDecision
+from governancedsl.utils.chp_extension import Patch, PullRequest, PatchAction, Issue
 
 
 def init_body(session: Session):

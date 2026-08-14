@@ -4,8 +4,8 @@ from antlr4.CommonTokenStream import CommonTokenStream
 from antlr4.InputStream import InputStream
 from antlr4.tree.Tree import ParseTreeWalker
 
-from grammar import PolicyCreationListener, govdslParser, govdslLexer
-from grammar.govErrorListener import govErrorListener
+from governancedsl.grammar import PolicyCreationListener, govdslParser, govdslLexer
+from governancedsl.grammar.govErrorListener import govErrorListener
 
 
 def setup_parser(text):

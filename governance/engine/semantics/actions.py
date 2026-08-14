@@ -4,8 +4,8 @@ import subprocess
 
 from governance.engine.semantics.helpers import update_individual
 from governance.engine.semantics.runtime_metamodel import Collaboration
-from metamodel import SinglePolicy, StringList, Individual, Role
-from utils.chp_extension import Patch, PatchAction, PullRequest, MemberLifecycle, MemberAction
+from governancedsl.metamodel import SinglePolicy, StringList, Individual, Role
+from governancedsl.utils.chp_extension import Patch, PatchAction, PullRequest, MemberLifecycle, MemberAction
 
 
 def resolve_action(collab: Collaboration, policy: SinglePolicy):
@@ -24,7 +24,7 @@ def merge_PR(collab: Collaboration):
     pr = collab.scope.element
     if isinstance(pr, PullRequest):
         collab._platform.put(
-            f"/repos/{collab.scope.activity.project.repo_id}/pulls/{pr.payload["number"]}/merge",
+            f"/repos/{collab.scope.activity.project.repo_id}/pulls/{pr.payload['number']}/merge",
             data={
                 "commit_title": "Validated Merge",
                 "commit_message": "Merge of a pull request validated by the decision engine"
@@ -34,7 +34,7 @@ def close_PR(collab: Collaboration):
     pr = collab.scope.element
     if isinstance(pr, PullRequest):
         collab._platform.patch(
-            f"/repos/{collab.scope.activity.project.repo_id}/pulls/{pr.payload["number"]}",
+            f"/repos/{collab.scope.activity.project.repo_id}/pulls/{pr.payload['number']}",
             data={
                 "state": "closed"
             })
@@ -43,7 +43,7 @@ def close_issue(collab: Collaboration):
     pr = collab.scope.element
     if isinstance(pr, PullRequest):
         collab._platform.patch(
-            f"/repos/{collab.scope.activity.project.repo_id}/issues/{pr.payload["number"]}",
+            f"/repos/{collab.scope.activity.project.repo_id}/issues/{pr.payload['number']}",
             data={
                 "state": "closed"
             })

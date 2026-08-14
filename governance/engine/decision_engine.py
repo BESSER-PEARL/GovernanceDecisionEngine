@@ -3,13 +3,13 @@ import logging
 import os
 import subprocess
 
-from besser.agent.core.agent import Agent
-from besser.agent.core.session import Session
-from besser.agent.exceptions.logger import logger
-from besser.agent.library.transition.events.base_events import ReceiveFileEvent
-from besser.agent.library.transition.events.github_webhooks_events import PullRequestAssigned, GitHubEvent, \
+from baf.core.agent import Agent
+from baf.core.session import Session
+from baf.exceptions.logger import logger
+from baf.library.transition.events.base_events import ReceiveFileEvent
+from baf.library.transition.events.github_webhooks_events import PullRequestAssigned, GitHubEvent, \
     PullRequestOpened, IssuesOpened, Push
-from besser.agent.library.transition.events.gitlab_webhooks_events import MergeRequestApproved, GitLabEvent, \
+from baf.library.transition.events.gitlab_webhooks_events import MergeRequestApproved, GitLabEvent, \
     MergeRequestOpened, MergeRequestUnapproved, MergeRequestApproval, MergeRequestUpdated
 
 from governance.engine.events import DeadlineEvent, VoteEvent, CollaborationProposalEvent, UserRegistrationEvent, \
