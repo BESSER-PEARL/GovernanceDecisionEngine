@@ -1,45 +1,43 @@
 # Governance Decision Engine
 
-This repository contains the implementation of the decision engine for the [GovernanceDSL](https://github.com/BESSER-PEARL/GovernanceDSL).
-This repository is structured as follows:
-- `docs/` : This folder contains the documentation of the decision engine (Work in Progress)
-- `governance/` : This folder contains the engine implementation and tests
-  - `engine/` : This folder contains the agent logic, events, and parsing helpers
-    - `semantics/` : This folder contains the runtime metamodel implementation and policy enforcement behavior
-    - `testing/` : This folder contains the mocks, helpers and additional testing hooks to run the engine in test mode
-      - `framework/` : This folder contains the framework to define tests on top of the engine in test mode
-  - `tests/` : This folder contains the different tests of the engine
-    - `engine/` : This folder contains tests for the different parts of the engine in isolation (WIP)
-    - `policies/` : This folder contains tests for the different types of policies (WIP)
-    - `kubernetes/` : This folder contains tests replicating kubernetes repository pull requests
-    - `policy_examples/` : This folder contains the policy definitions for the tests
+The Governance Decision Engine runs policies written with [GovernanceDSL](https://github.com/BESSER-PEARL/GovernanceDSL). Its PyPI distribution is `besser-governance-engine`, and its Python import path is `governance`.
 
-## Prerequisite
-- Python 3.12
-- Recommended: Create a virtual environment
-  (e.g. [`venv`](https://docs.python.org/3/library/venv.html),
-  [`conda`](https://conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html))
-- Clone the [GovernanceDSL](https://github.com/BESSER-PEARL/GovernanceDSL) repository
-- Clone this repository
-- Install the dependencies (for both repositories) by referencing to the requirements files:
+## Install
+
+Install it in your project's Python environment:
 
 ```bash
-pip install -r requirements.txt
+pip install besser-governance-engine==1.0.0
 ```
 
-## Run the experiment
-Running the experiment is a two steps process:
-1. Run the engine in test mode
-2. Run the `governance/tests/kubernetes/kubernetes_merge_policy.py`
+The package declares Python 3.10 or newer; the release checks were run on Python 3.12.
 
-### Start the engine in test mode
-To start the engine in test mode, you first need to add the location of the GovernanceDSL folder on you machine to the `PYTHONPATH` environment variable.
-Then, simply run the `governance/engine/decision_engine.py` script with the `-t` option
+Check the two primary imports with:
 
-### Run the PR replication tests
-To run the test, simply call pytest on `kubernetes_merge_policy.py`.
 ```bash
-pytest kubernetes_merge_policy.py
+python -c "import governance.engine.parsing; from governance.engine.semantics.runtime_metamodel import Interaction; print(Interaction)"
 ```
 
-**NB:** The test ar configured with the path to the `kubernetes.txt` file. By default, you need to start the test while in the `governance/tests/kubernetes` folder. Alternatively, you can edit the tests to change the path at the beginning of the file
+## Run the engine
+
+The engine module can be started with `python -m governance.engine.decision_engine`; add `-t` for test mode. Running the agent requires a `config.yaml` in the current working directory. A minimal shape is:
+
+```yaml
+agent:
+  check_transitions:
+    delay: 0.1
+platforms:
+  github:
+    personal_token: "YOUR_GITHUB_TOKEN"
+    webhook_token: "YOUR_WEBHOOK_SECRET"
+    webhook_port: 8901
+```
+
+Provide credentials appropriate for your deployment. The package does not bundle a configuration file or a console script. Projects that only import the parsing or runtime modules do not need `config.yaml`.
+
+## Repository layout
+
+- `governance/engine/` contains the engine, parsing helpers, runtime model, and test-mode support.
+- `governance/tests/` contains the repository test suites and policy examples. They stay in the repository and are excluded from both release archives.
+- `docs/` contains additional documentation under development.
+

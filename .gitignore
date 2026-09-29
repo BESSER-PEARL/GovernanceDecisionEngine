@@ -1,8 +1,11 @@
 .venv/*
+/build/
+/dist/
+/*.egg-info/
 .idea/*
 **/__pycache__/**
 application.log
 .env
 .vscode/*
-
+.claude/
 governance/tests/multiagent/config.ini
