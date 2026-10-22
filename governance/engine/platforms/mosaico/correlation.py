@@ -12,6 +12,8 @@ coupling to BAF's internals any further than reading ``collab._is_decided``.
 import threading
 from concurrent.futures import Future
 
+from baf.exceptions.logger import logger
+
 _pending: dict[int, Future] = {}
 _lock = threading.Lock()
 
@@ -29,6 +31,10 @@ def resolve_if_pending(collaboration_id: int, decision) -> None:
     with _lock:
         future = _pending.pop(collaboration_id, None)
     if future is not None and not future.done():
+        logger.info(
+            f"MOSAICOPlatform: decision correlated for collaboration '{collaboration_id}' "
+            f"-- waking up the pending AISP request"
+        )
         future.set_result(decision)
 
 

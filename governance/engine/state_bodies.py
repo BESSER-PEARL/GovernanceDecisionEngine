@@ -138,15 +138,23 @@ def aisp_evaluate_bodybuilder(agent):
         scope = build_scope(request)
         collab = interact.propose(creator, request.collaboration_id, scope,
                                    request.rationale or request.scope.task, NullPlatform())
+        logger.info(f"MOSAICOPlatform: proposed collaboration '{collab._id}' (scope: {request.scope.project}/{request.scope.task})")
 
         applicable_policy, starting_policies = find_policy_for(session.get("policies"), collab)
         if applicable_policy is not None:
+            logger.info(f"MOSAICOPlatform: collaboration '{collab._id}' matched policy '{applicable_policy.name}'")
             starting_policies = find_starting_policies_in(applicable_policy, collab)
             start_function(agent, starting_policies, collab)
+        else:
+            logger.warning(f"MOSAICOPlatform: no governance policy matches collaboration '{collab._id}'")
 
         for participant in request.participants:
             individual = interact.get_or_create_dynamic_individual(participant.id)
             decidables = collab.vote(individual, participant.agreement, participant.rationale)
+            logger.info(
+                f"MOSAICOPlatform: recorded vote from '{participant.id}' "
+                f"(agreement={participant.agreement}) on collaboration '{collab._id}'"
+            )
             for decidable in decidables:
                 agent.receive_event(DecideEvent(collab, decidable))
     return aisp_evaluate_body

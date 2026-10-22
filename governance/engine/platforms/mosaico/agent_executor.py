@@ -46,6 +46,8 @@ class GovernanceAgentExecutor(AgentExecutor):
         if context.current_task is None:
             await event_queue.enqueue_event(task)
 
+        logger.info(f"MOSAICOPlatform: received evaluate-collaboration request (task '{task.id}')")
+
         task_updater = TaskUpdater(event_queue=event_queue, task_id=task.id, context_id=task.context_id)
         await task_updater.update_status(
             state=TaskState.TASK_STATE_WORKING,
@@ -54,14 +56,21 @@ class GovernanceAgentExecutor(AgentExecutor):
 
         data_parts = get_data_parts(context.message.parts)
         if not data_parts:
+            logger.warning(f"MOSAICOPlatform: task '{task.id}' rejected -- no data part in the request message")
             await task_updater.failed(new_text_message('No data part found in the request message.'))
             return
 
         try:
             request = EvaluateCollaborationRequest.from_dict(data_parts[0])
         except (KeyError, TypeError) as exc:
+            logger.warning(f"MOSAICOPlatform: task '{task.id}' rejected -- malformed request: {exc}")
             await task_updater.failed(new_text_message(f'Malformed evaluate-collaboration request: {exc}'))
             return
+
+        logger.info(
+            f"MOSAICOPlatform: evaluating collaboration '{request.collaboration_id}' "
+            f"({len(request.participants)} vote(s)) for task '{task.id}'"
+        )
 
         try:
             pending = self._platform.evaluate_collaboration(request)
@@ -70,7 +79,7 @@ class GovernanceAgentExecutor(AgentExecutor):
             )
         except _TIMEOUT_ERRORS:
             correlation.cancel(request.collaboration_id)
-            logger.warning(f"AISP evaluate-collaboration timed out for collaboration '{request.collaboration_id}'")
+            logger.warning(f"MOSAICOPlatform: evaluate-collaboration timed out for collaboration '{request.collaboration_id}'")
             await task_updater.failed(new_text_message(
                 'No decision could be reached: the policy could not be resolved or conditions were not met '
                 '(e.g. missing required participants) within the expected time.'
@@ -78,13 +87,20 @@ class GovernanceAgentExecutor(AgentExecutor):
             return
         except Exception as exc:  # noqa: BLE001 - surface any engine-side error to the caller
             correlation.cancel(request.collaboration_id)
-            logger.exception('AISP evaluate-collaboration failed')
+            logger.exception(f"MOSAICOPlatform: evaluate-collaboration failed for collaboration '{request.collaboration_id}'")
             await task_updater.failed(new_text_message(f'Decision engine error: {exc}'))
             return
+
+        logger.info(
+            f"MOSAICOPlatform: decision received for collaboration '{request.collaboration_id}' -- "
+            f"accepted={decision._accepted}, rule='{decision._rule.name}'"
+        )
 
         await task_updater.add_artifact(parts=[new_data_part(decision_result(decision))], name='decision')
         await task_updater.add_artifact(parts=[new_text_part(decision_explanation(decision))], name='explanation')
         await task_updater.complete(new_text_message('Decision reached.'))
+
+        logger.info(f"MOSAICOPlatform: task '{task.id}' completed for collaboration '{request.collaboration_id}'")
 
     async def cancel(self, context: RequestContext, event_queue: EventQueue) -> None:
         raise NotImplementedError('Cancel is not supported: decisions are rule-based and complete quickly.')

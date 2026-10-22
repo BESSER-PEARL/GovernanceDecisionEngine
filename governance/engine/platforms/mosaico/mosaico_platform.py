@@ -103,6 +103,7 @@ class MOSAICOPlatform(Platform):
         engine's existing vote-decidability logic (Collaboration.vote /
         decide_bodybuilder) reaches one -- see correlation.py.
         """
+        logger.info(f"MOSAICOPlatform: firing AISPEvaluateEvent for collaboration '{request.collaboration_id}'")
         future = correlation.register(request.collaboration_id)
         self._agent.receive_event(AISPEvaluateEvent(request))
         return future
