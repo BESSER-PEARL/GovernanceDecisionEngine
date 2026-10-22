@@ -164,3 +164,4 @@ if __name__ == '__main__':
         os.environ["PLAYGROUND_POLICY"] = policy_file
     agent = setup(args.test, args.playground, policy_file)
     agent.run()
+    os._exit(0)
