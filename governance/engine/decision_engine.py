@@ -13,13 +13,14 @@ from baf.library.transition.events.gitlab_webhooks_events import MergeRequestApp
     MergeRequestOpened, MergeRequestUnapproved, MergeRequestApproval, MergeRequestUpdated
 
 from governance.engine.events import DeadlineEvent, VoteEvent, CollaborationProposalEvent, UserRegistrationEvent, \
-    UpdatePolicyEvent, DecideEvent
+    UpdatePolicyEvent, DecideEvent, AISPEvaluateEvent
+from governance.engine.platforms.mosaico.mosaico_platform import MOSAICOPlatform
 from governance.engine.parsing import parse_text
 from governance.engine.semantics.helpers import get_all_individuals, get_all_roles
 from governance.engine.semantics.runtime_metamodel import Interaction
 from governance.engine.state_bodies import individual_body, vote_body, collab_bodybuilder, \
     decide_bodybuilder, gh_webhooks_bodybuilder, update_policy_body, init_body, read_policy_bodybuilder, \
-    gl_webhooks_bodybuilder, deadline_body
+    gl_webhooks_bodybuilder, deadline_body, aisp_evaluate_bodybuilder
 from governance.engine.testing.hooks import add_testing_hooks
 from governance.engine.testing.platform_mock import PlatformMock
 
@@ -34,6 +35,9 @@ def setup(testing: bool, playground: bool, init_policy_path: str) -> Agent:
     gh_platform = agent.use_github_platform()
     # gl_platform = agent.use_gitlab_platform()
 
+    mosaico_platform = MOSAICOPlatform(agent)
+    agent._platforms.append(mosaico_platform)
+
 
     # STATES
     init = agent.new_state('init', initial=True)
@@ -47,6 +51,7 @@ def setup(testing: bool, playground: bool, init_policy_path: str) -> Agent:
     vote_state = agent.new_state('vote')
     deadline_state = agent.new_state('deadline')
     decide_state = agent.new_state('decide')
+    aisp_evaluate_state = agent.new_state('aisp_evaluate')
 
 
     # STATES BODIES' LINKING
@@ -63,6 +68,7 @@ def setup(testing: bool, playground: bool, init_policy_path: str) -> Agent:
     vote_state.set_body(vote_body)
     deadline_state.set_body(deadline_body)
     decide_state.set_body(decide_bodybuilder(agent))
+    aisp_evaluate_state.set_body(aisp_evaluate_bodybuilder(agent))
 
     # ADDITIONAL HOOKS AND FEATURES FOR TESTING
     if testing:
@@ -119,6 +125,7 @@ def setup(testing: bool, playground: bool, init_policy_path: str) -> Agent:
     idle.when_event(UpdatePolicyEvent()).go_to(update_policy)
     idle.when_event(UserRegistrationEvent()).go_to(individual_state)
     idle.when_event(CollaborationProposalEvent()).go_to(collab_state)
+    idle.when_event(AISPEvaluateEvent()).go_to(aisp_evaluate_state)
 
 
     # when event managed go back to idle
@@ -131,6 +138,7 @@ def setup(testing: bool, playground: bool, init_policy_path: str) -> Agent:
     vote_state.go_to(idle)
     deadline_state.go_to(idle)
     decide_state.go_to(idle)
+    aisp_evaluate_state.go_to(idle)
 
     return agent
 

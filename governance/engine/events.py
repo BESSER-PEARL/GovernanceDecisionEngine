@@ -231,3 +231,20 @@ class VoteEvent(EngineEvent):
     @property
     def rationale(self):
         return self._rationale
+
+
+class AISPEvaluateEvent(EngineEvent):
+    """Carries one AISP `evaluate-collaboration` request (see
+    governance/engine/platforms/mosaico/) into the engine FSM as a single
+    event, so its state body can propose the collaboration and record every
+    participant's vote in one atomic, ordered pass.
+
+    This is deliberately NOT done as a CollaborationProposalEvent followed by
+    several VoteEvents (the GitHub/GitLab webhook pattern): BAF's per-session
+    event queue does not guarantee FIFO ordering across receive_event() calls
+    made back-to-back from the same thread, so that sequence can race (a vote
+    being processed before the collaboration it belongs to even exists).
+    """
+    def __init__(self, request: 'EvaluateCollaborationRequest' = None):
+        super().__init__('AISPEvaluateEvent', request)
+        self.request = request

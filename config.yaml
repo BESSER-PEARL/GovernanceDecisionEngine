@@ -7,3 +7,6 @@ platforms:
     personal_token: "not-used-in-test"
     webhook_token: "secret_test_webhook"
     webhook_port: 8901
+  mosaico:
+    host: "0.0.0.0"
+    port: 8910
