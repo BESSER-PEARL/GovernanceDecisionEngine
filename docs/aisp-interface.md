@@ -7,16 +7,13 @@ in its initial A2A Message request, and what artifacts it produces, per the
 
 It is implemented by `MOSAICOPlatform`
 (`governance/engine/platforms/mosaico/`), a BAF `Platform` built directly on
-the official `a2a-sdk` (not BAF's own bundled `A2APlatform`, which does not
-implement the real A2A wire format — see the implementation notes at the
-bottom of this document).
+the official `a2a-sdk`.
 
 ## Integration model
 
-Per agreement with WP3 (see `emails/Re_ WP3-WP4 Coordination.eml` and
-`emails/Re_ Questions about Decision engine.eml`): the Collaboration Agent
+Per agreement with WP3: the Collaboration Agent
 collects votes/opinions from Supervision Agents itself, then calls the
-governance agent **on demand**, once, with everything needed to decide —
+governance agent **on demand**, once, with everything needed to decide,
 rather than the engine listening for individual votes over time (as it does
 today for GitHub webhooks). This keeps the AISP interface to a single
 synchronous skill.
@@ -107,7 +104,7 @@ machine-friendly artifact, one natural-language one):
 
 - **`explanation`** — one `text` part: a natural-language rationale (which
   policy/votes decided the outcome). Deterministic for T4.3 — no LLM
-  involved; a future Consensus Agent (T4.4) may enrich this for escalated,
+  involved. A future Consensus process (T4.4) may enrich this for escalated,
   non-decidable cases without changing the wire contract.
 
 `Task.status.state` is `TASK_STATE_COMPLETED` when a decision was reached, or
@@ -144,33 +141,3 @@ Response (`decision` artifact's `data` part):
   ]
 }
 ```
-
-## Implementation notes
-
-- `besser-agentic-framework` (BAF) already ships a platform called
-  `A2APlatform` (`baf.platforms.a2a`). It is **not** used here: it implements
-  a bespoke, non-standard JSON-RPC/task scheme (`task_id`/`method`/`params`,
-  `PENDING/RUNNING/DONE/ERROR` states) with no `Message`/`Part`/`Task`/`AgentCard`
-  objects matching the real A2A spec and no `/.well-known/agent-card.json`.
-  Since the rest of MOSAICO speaks genuine A2A v1.0.0 via the official SDKs,
-  `MOSAICOPlatform` wraps `a2a-sdk` directly instead.
-- The engine processes a request as a single new FSM event
-  (`events.AISPEvaluateEvent`) handled by one state body
-  (`state_bodies.aisp_evaluate_bodybuilder`), which proposes the collaboration
-  and records every vote in one synchronous pass, rather than replaying it as
-  a proposal event followed by separate vote events (BAF's per-session event
-  queue does not guarantee FIFO ordering across back-to-back
-  `receive_event()` calls, which made that initial approach race).
-- Out of scope for this interface (tracked separately, see
-  `MOSAICO_T43_Onboarding_Report.md`): writing collaboration history to
-  INTRA, and the T4.4 Consensus Agent extension. The `Task`-based response
-  shape (rather than a bare `Message`) is chosen so a future Consensus Agent
-  can extend it with `input-required` rounds without changing this contract.
-
-## Open items for WP3/WP1
-
-- Confirm reusing the Supervision Agent's `Evaluation` type shape for the
-  `decision` artifact (rather than inventing a new one) is acceptable, so
-  WP3's parsing code stays uniform across agent types.
-- Policy upload over AISP is not yet defined; for now the policy must already
-  be loaded on the engine side.
