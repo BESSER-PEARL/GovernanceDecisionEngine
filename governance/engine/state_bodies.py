@@ -13,9 +13,12 @@ from governance.engine.parsing import parse_text
 from governance.engine.semantics.actions import resolve_action, close_PR, close_issue
 from governance.engine.semantics.runtime_metamodel import Interaction
 from governance.engine.events import DeadlineEvent, VoteEvent, CollaborationProposalEvent, UserRegistrationEvent, \
-    UpdatePolicyEvent, DecideEvent
+    UpdatePolicyEvent, DecideEvent, AISPEvaluateEvent
 from governance.engine.semantics.helpers import find_policies_in, find_starting_policies_in, start_policies, \
     find_policy_for, get_all_individuals, get_all_roles, get_reaction_for
+from governance.engine.platforms.mosaico import correlation
+from governance.engine.platforms.mosaico.mapping import build_scope
+from governance.engine.platforms.mosaico.null_platform import NullPlatform
 from governance.engine.testing.helpers import start_testing_policies, start_playground_policies
 from governancedsl.metamodel import ComposedPolicy, Individual, BooleanDecision
 from governancedsl.utils.chp_extension import Patch, PullRequest, PatchAction, Issue
@@ -115,6 +118,47 @@ def vote_body(session: Session):
         for decidable in decidables:
             session._agent.receive_event(DecideEvent(collaboration, decidable))
 
+def aisp_evaluate_bodybuilder(agent):
+    """Handles one AISP evaluate-collaboration request: propose the
+    collaboration and record every participant's vote in a single state body
+    call (see AISPEvaluateEvent for why this isn't split into separate
+    propose/vote events like the GitHub/GitLab flow).
+    """
+    start_function = start_policies
+    if os.environ.get("ENGINE_TESTING") == "True":
+        start_function = start_testing_policies
+    if os.environ.get("ENGINE_PLAYGROUND") == "True":
+        start_function = start_playground_policies
+    def aisp_evaluate_body(session: Session):
+        event: AISPEvaluateEvent = session.event
+        request = event.request
+        interact = session.get("interactions")
+
+        creator = interact.get_or_create_dynamic_individual(request.proposed_by)
+        scope = build_scope(request)
+        collab = interact.propose(creator, request.collaboration_id, scope,
+                                   request.rationale or request.scope.task, NullPlatform())
+        logger.info(f"MOSAICOPlatform: proposed collaboration '{collab._id}' (scope: {request.scope.project}/{request.scope.task})")
+
+        applicable_policy, starting_policies = find_policy_for(session.get("policies"), collab)
+        if applicable_policy is not None:
+            logger.info(f"MOSAICOPlatform: collaboration '{collab._id}' matched policy '{applicable_policy.name}'")
+            starting_policies = find_starting_policies_in(applicable_policy, collab)
+            start_function(agent, starting_policies, collab)
+        else:
+            logger.warning(f"MOSAICOPlatform: no governance policy matches collaboration '{collab._id}'")
+
+        for participant in request.participants:
+            individual = interact.get_or_create_dynamic_individual(participant.id)
+            decidables = collab.vote(individual, participant.agreement, participant.rationale)
+            logger.info(
+                f"MOSAICOPlatform: recorded vote from '{participant.id}' "
+                f"(agreement={participant.agreement}) on collaboration '{collab._id}'"
+            )
+            for decidable in decidables:
+                agent.receive_event(DecideEvent(collab, decidable))
+    return aisp_evaluate_body
+
 def deadline_body(session: Session):
     deadline_event: DeadlineEvent = session.event
     if not isinstance(deadline_event.policy.decision_type, BooleanDecision) or \
@@ -154,4 +198,9 @@ def decide_bodybuilder(agent):
                     close_PR(decide_event.collab)
             except:
                 pass
+
+        # If an AISP evaluate-collaboration request is awaiting this collaboration's
+        # terminal decision (see platforms/mosaico/correlation.py), resolve it now.
+        if decide_event.collab._is_decided is not None:
+            correlation.resolve_if_pending(decide_event.collab._id, decide_event.collab._is_decided)
     return decide_body

@@ -1,3 +1,6 @@
-besser-agentic-framework
-governancedsl==0.1.2
+besser-agentic-framework==4.5.3
+governancedsl==0.1.1
 pytest~=8.4.2
+a2a-sdk
+uvicorn
+sse-starlette==3.5.0
